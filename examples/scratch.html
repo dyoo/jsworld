@@ -4,6 +4,8 @@
     <script type="text/javascript" src="../jsworld.js"></script>
     
     <script type="text/javascript">
+      var jsworld = plt.Jsworld;
+
       function cons(array, value) {
         return array.concat([value]);
       }
@@ -20,33 +22,33 @@
         boxes: [], // list of nodes
         entries: [], // list of nodes
         headers: [], // list of nodes
-        answer: text(""),
+        answer: jsworld.text(""),
         counter: 1,
       };
       
       function add_event(world) {
-        var box = div({ className: "box" });
-        var header = p({ className: "header"});
-        var header_text = text("Box #" + world.counter + ": " + name_entry.value);
-        var entry = input("text");
+        var box = jsworld.div({ className: "box" });
+        var header = jsworld.p({ className: "header"});
+        var header_text = jsworld.text("Box #" + world.counter + ": " + name_entry.value);
+        var entry = jsworld.input("text");
         var tree_node;
         
-        var remove = button(function (world) {
-          return augment(world, {
-            trees: removeq(world.trees, tree_node),
-            entries: removeq(world.entries, entry),
-            headers: removeq(world.headers, header),
-            boxes: removeq(world.boxes, box),
+        var remove = jsworld.button(function (world) {
+          return jsworld.augment(world, {
+            trees: jsworld.removeq(world.trees, tree_node),
+            entries: jsworld.removeq(world.entries, entry),
+            headers: jsworld.removeq(world.headers, header),
+            boxes: jsworld.removeq(world.boxes, box),
           });
         });
-        var remove_text = text("X");
+        var remove_text = jsworld.text("X");
         
         tree_node =
           [box,
             [header, [header_text], [remove, [remove_text]]],
             [entry]];
         
-        return augment(world, {
+        return jsworld.augment(world, {
           counter: world.counter + 1,
           trees: cons(world.trees, tree_node),
           entries: cons(world.entries, entry),
@@ -61,20 +63,20 @@
         for (var i = 0; i < world.entries.length; i++)
           r += parseFloat(world.entries[i].value);
         
-        return augment(world, { answer: text("" + r) });
+        return jsworld.augment(world, { answer: jsworld.text("" + r) });
       }
       
-      var name_entry = input("text");
+      var name_entry = jsworld.input("text");
       
-      var add_button = button(add_event);
-      var add_button_text = text("Add more!");
+      var add_button = jsworld.button(add_event);
+      var add_button_text = jsworld.text("Add more!");
       
-      var compute_button = button(compute_event);
-      var compute_button_text = text("Compute!");
+      var compute_button = jsworld.button(compute_event);
+      var compute_button_text = jsworld.text("Compute!");
       
-      var answer_text = text("Answer:");
+      var answer_text = jsworld.text("Answer:");
       
-      var the_div = div();
+      var the_div = jsworld.div();
       
       function redraw(world) {
         return [document.body,
@@ -102,6 +104,6 @@
     </script>
   </head>
   
-  <body onload="big_bang(init_world, redraw, redraw_css, 100, tick)">
+  <body onload="jsworld.big_bang(window.document.body, init_world, redraw, redraw_css, 100, tick)">
   </body>
 </html>
