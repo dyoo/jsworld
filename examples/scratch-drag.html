@@ -163,7 +163,8 @@
     </script>
   </head>
   
-  <body onload="jsworld.big_bang(window.document.body, init_world, redraw, redraw_css, 100, tick,
+  <body onload="jsworld.big_bang(window.document.body, init_world, redraw, redraw_css,
+		[jsworld.on_tick(100, tick)],
     { mousemove: continue_drag,
       mouseup: complete_drag,
       keypress: cancel_drag })">

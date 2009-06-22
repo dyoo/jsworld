@@ -439,24 +439,16 @@ plt.Jsworld = {};
 				init_world, 
 				redraw, 
 				redraw_css, 
-				delay, 
-				tick, 
+				handlers,
 				attribs) {
 
-	addWorldListener(function(w) { do_redraw(w, top, redraw, redraw_css); });
-
-
+	addWorldListener(function(w) { 
+		do_redraw(w, top, redraw, redraw_css); });
+	for(var i = 0 ; i < handlers.length; i++) {
+	    handlers[i].onRegister();
+	}
 	copy_attribs(top, attribs);
-
-
-
-	setInterval(function () { changeWorld(tick); }, delay);
-	// do we want something for body too?
-	//copy_attribs(toplevelNode, attribs);
-
-
 	changeWorld(function(w) { return init_world; });
-
     }
 
 
@@ -467,10 +459,22 @@ plt.Jsworld = {};
 //     function onDrawCss(f) {
 //     }
 
-//     function onTick(delay, f) {
-// 	// fill me in
-//     }
 
+    function on_tick(delay, tick) {
+	var ticker = {
+	    watchId: -1,
+	    onRegister: function () { 
+		ticker.watchId = setInterval(function() { changeWorld(tick); },
+					     delay);
+	    },
+
+	    onUnregister: function () {
+		clearInterval(ticker.watchId);
+	    }
+	};
+	return ticker;
+    }
+    Jsworld.on_tick = on_tick;
 
 
 
