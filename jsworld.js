@@ -21,7 +21,27 @@ plt.Jsworld = {};
     //
 
     var toplevelNode;
-    var world, redraw_func, redraw_css_func, tick_func;
+    var world, redraw_func, redraw_css_func;
+
+    var worldListeners = [];
+
+
+
+    // changeWorld: (world -> world) -> void
+    // Adjust the world, and notify all listeners.
+    function changeWorld(updater) {
+	world = updater(world);
+	for(var i = 0; i < worldListeners.length; i++) {
+	    worldListeners[i](world);
+	}
+    }
+
+
+    function addWorldListener(listener) {
+	worldListeners.push(listener);
+    }
+
+
 
     // pc (profiling) stuff
 
@@ -421,15 +441,18 @@ plt.Jsworld = {};
 				init_world, 
 				redraw, redraw_css, delay, tick, attribs) {
 	toplevelNode = top;
-	world = init_world;
 	redraw_func = redraw;
 	redraw_css_func = redraw_css;
-	tick_func = tick;
-	do_redraw();
-	setInterval(function () { world = tick(world); do_redraw(); }, delay);
+
+	addWorldListener(function(w) { do_redraw(); });
+
+	setInterval(function () { changeWorld(tick); }, delay);
 	// do we want something for body too?
 	//copy_attribs(toplevelNode, attribs);
 	copy_attribs(window, attribs);
+
+
+	changeWorld(function(w) { return init_world; });
     }
 
 
