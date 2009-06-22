@@ -1,6 +1,9 @@
-var plt = plt || {};
 
-plt.Jsworld = plt.Jsworld || {};
+if(typeof(plt) == 'undefined') {   
+    plt = {};
+}
+
+plt.Jsworld = {};
 
 
 
@@ -13,8 +16,23 @@ plt.Jsworld = plt.Jsworld || {};
     var Jsworld = plt.Jsworld;
 
 
+    //
+    // WORLD STUFFS
+    //
 
-    var toplevelNode = document.body;
+    var toplevelNode;
+    var world, redraw_func, redraw_css_func, tick_func;
+
+    // pc (profiling) stuff
+
+    var pc_times = {}, pc_counts = {};
+    var pc_time;
+
+
+
+
+
+
 
 
 
@@ -27,24 +45,32 @@ plt.Jsworld = plt.Jsworld || {};
 	for (var i = 0; i < a.length; i++) b[i] = f(a[i]);
 	return b;
     }
+    Jsworld.map = map;
+
 
     function concat_map(a, f) {
 	var b = [];
 	for (var i = 0; i < a.length; i++) b = b.concat(f(a[i]));
 	return b;
     }
+    Jsworld.concat_map = concat_map;
 
     function mapi(a, f) {
 	var b = new Array(a.length);
 	for (var i = 0; i < a.length; i++) b[i] = f(a[i], i);
 	return b;
     }
+    Jsworld.mapi = mapi;
+
 
     function fold(a, x, f) {
 	for (var i = 0; i < a.length; i++)
 	    x = f(a[i], x);
 	return x;
+
     }
+    Jsworld.fold = fold;
+
 
     function augment(o, a) {
 	var oo = {};
@@ -54,6 +80,8 @@ plt.Jsworld = plt.Jsworld || {};
 	    oo[e] = a[e];
 	return oo;
     }
+    Jsworld.augment = augment;
+
 
     function assoc_cons(o, k, v) {
 	var oo = {};
@@ -62,10 +90,15 @@ plt.Jsworld = plt.Jsworld || {};
 	oo[k] = v;
 	return oo;
     }
+    Jsworld.assoc_cons = assoc_cons;
+
+
 
     function cons(array, value) {
 	return array.concat([value]);
     }
+    Jsworld.cons = cons;
+
 
     function removeq(array, value) {
 	for (var i = 0; i < array.length; i++)
@@ -73,6 +106,8 @@ plt.Jsworld = plt.Jsworld || {};
 		return array.slice(0, i).concat(array.slice(i+1));
 	return array;
     }
+    Jsworld.removeq = removeq;
+
 
     function removef(array, f) {
 	for (var i = 0; i < array.length; i++)
@@ -80,6 +115,8 @@ plt.Jsworld = plt.Jsworld || {};
 		return array.slice(0, i).concat(array.slice(i+1));
 	return array;
     }
+    Jsworld.removef = removef;
+
 
     function without(obj, attrib) {
 	var o = {};
@@ -88,12 +125,18 @@ plt.Jsworld = plt.Jsworld || {};
 		o[a] = obj[a];
 	return o;
     }
+    Jsworld.without = without;
+
+
 
     function memberq(a, x) {
 	for (var i = 0; i < a.length; i++)
 	    if (a[i] === x) return true;
 	return false;
     }
+    Jsworld.memberq = memberq;
+    
+
 
     //
     // DOM UPDATING STUFFS
@@ -179,10 +222,6 @@ plt.Jsworld = plt.Jsworld || {};
 	return ret;
     }
 
-    // pc stuff
-
-    var pc_times = {}, pc_counts = {};
-    var pc_time;
 
     function pcClear() {
 	pc_time = new Date().getTime();
@@ -345,11 +384,6 @@ plt.Jsworld = plt.Jsworld || {};
 	    else set_css_attribs(css[i].node, css[i].attribs);
     }
 
-    //
-    // WORLD STUFFS
-    //
-
-    var world, redraw_func, redraw_css_func, tick_func;
 
 
     function sexp2tree(sexp) {
@@ -381,7 +415,12 @@ plt.Jsworld = plt.Jsworld || {};
 	update_css(ns, sexp2css(redraw_css_func(world)));
     }
 
-    function big_bang(init_world, redraw, redraw_css, delay, tick, attribs) {
+
+
+    Jsworld.big_bang = function(top, 
+				init_world, 
+				redraw, redraw_css, delay, tick, attribs) {
+	toplevelNode = top;
 	world = init_world;
 	redraw_func = redraw;
 	redraw_css_func = redraw_css;
@@ -392,6 +431,22 @@ plt.Jsworld = plt.Jsworld || {};
 	//copy_attribs(toplevelNode, attribs);
 	copy_attribs(window, attribs);
     }
+
+
+//     function onDraw(f) {
+// 	// fill me in
+//     }
+
+//     function onDrawCss(f) {
+//     }
+
+//     function onTick(delay, f) {
+// 	// fill me in
+//     }
+
+
+
+
 
     //
     // DOM CREATION STUFFS
@@ -412,170 +467,29 @@ plt.Jsworld = plt.Jsworld || {};
 	return node;
     }
 
-    function p(attribs) {
+    Jsworld.p = function(attribs) {
 	return copy_attribs(document.createElement('p'), attribs);
     }
 
-    function div(attribs) {
+    Jsworld.div = function(attribs) {
 	return copy_attribs(document.createElement('div'), attribs);
     }
 
-    function button(f, attribs) {
+    Jsworld.button = function(f, attribs) {
 	var n = document.createElement('button');
 	add_ev(n, 'click', f);
 	return copy_attribs(n, attribs);
     }
 
-    function input(type, attribs) {
+    Jsworld.input = function(type, attribs) {
 	var n = document.createElement('input');
 	n.type = type;
 	return copy_attribs(n, attribs);
     }
 
-    function text(s, attribs) {
+    Jsworld.text = function(s, attribs) {
 	return copy_attribs(document.createTextNode(s), attribs);
     }
 
-
-
-
-
-
-    //////////////////////////////////////////////////////////////////////
-    //From this point forward, we define wrappers to integrate jsworld
-    //with Moby.
-
-
-    // deepListToArray: any -> any
-    // Converts list structure to array structure.
-    function deepListToArray(x) {
-	var thing = x;
-	if (org.plt.Kernel.empty_question_(thing)) {
-	    return [];
-	} else if (org.plt.Kernel.pair_question_(thing)) {
-	    var result = [];
-	    while (!thing.isEmpty()) {
-		result.push(deepListToArray(thing.first()));
-		thing = thing.rest();
-	    }
-	    return result;
-	} else {
-	    return x;
-	}
-    }
-
-    // assocListToAssocArray: (listof (list X Y)) -> (hashof X Y)
-    function assocListToAssocArray(aList) {
-	var result = {};
-	while (! aList.isEmpty()) {
-	    var key = aList.first().first();
-	    var val = aList.first().rest().first();
-	    result[key] = val;
-	    aList = aList.rest();
-	}
-	return result;
-    }
-
-
-    // changeWorld: (world -> world) -> void
-    // Trigger a change in the world due to an updater, and redraw.
-    function changeWorld(f) {
-	world = f(world); 
-	do_redraw();	
-    }
-
-
-    // getBigBangWindow: -> window
-    function getBigBangWindow() {
-        if (window.document.getElementById("jsworld-div") != undefined) {
-	    return window;
-	}
-
-        var newWindow = window.open(
-	    "big-bang.html",
-	    "big-bang");
-	    //"toolbar=false,location=false,directories=false,status=false,menubar=false,width="+width+",height="+height);
-	if (newWindow == null) { 
-            throw new Error("Error: Not allowed to create a new window."); }
-
-	return newWindow;
-    }
-
-
-
-
-
-    // types are
-    // sexp: (cons node (listof sexp))
-    // css-style: (node (listof (list string string)))
-
-    // Exports:
-
-
-    // bigBang: world (world -> sexp) (world -> (listof css-style)) number (world -> world) (listof (list string string)) -> world
-    Jsworld.bigBang = function(initWorld,
-			       redraw, 
-			       redrawCss, 
-			       delay, 
-			       tick, 
-			       attribs) {
-
-	var mainWindow = getBigBangWindow();
-	// KLUDGE: check with Chris to get newest version of jsworld that
-	// consumes the toplevel node.
-	toplevelNode = mainWindow.document.getElementById("jsworld-div");
-
-	function wrappedRedraw(w) {
-	    var result = [toplevelNode, deepListToArray(redraw([w]))];
-	    return result;
-	}
-
-	function wrappedRedrawCss(w) {
-	    var result = deepListToArray(redrawCss([w]));
-	    return result;
-	}
-
-	function wrappedTick(w) {
-	    var result = tick([w]);
-	    return result;
-	}
-
-	var wrappedDelay = delay.toInteger();
-
-
-	return big_bang(initWorld,
-			wrappedRedraw,
-			wrappedRedrawCss,
-			wrappedDelay, 
-			wrappedTick, 
-			assocListToAssocArray(attribs));
-    }
-
-
-
-    // p: assoc -> node
-    Jsworld.p = function(attribsAssocList) {
-	return p(assocListToAssocArray(attribsAssocList));
-    };
-
-    // div: assoc -> node
-    Jsworld.div = function (attribsAssocList) {
-	return div(assocListToAssocArray(attribsAssocList));
-    };
-
-    // button: (world -> world) assoc -> node
-    Jsworld.button = function(f, attribsAssocList) {
-	return button(f, assocListToAssocArray(attribsAssocList));
-    };
-
-    // input: string assoc -> node
-    Jsworld.input = function(type, attribsAssocList) {
-	return input(type, assocListToAssocArray(attribsAssocList));
-    };
-
-    // text: string assoc -> node
-    Jsworld.text = function(s, attribsAssocList) {
-	return text(s, assocListToAssocArray(attribsAssocList));
-    }
 
 })();
