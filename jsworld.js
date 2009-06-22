@@ -20,9 +20,7 @@ plt.Jsworld = {};
     // WORLD STUFFS
     //
 
-    var toplevelNode;
-    var world, redraw_func, redraw_css_func;
-
+    var world;
     var worldListeners = [];
 
 
@@ -271,7 +269,7 @@ plt.Jsworld = {};
 //     }
 
     // update_dom(nodes(Node), relations(Node)) = void
-    function update_dom(nodes, relations) {
+    function update_dom(toplevelNode, nodes, relations) {
 	//	pcClear();
 	
 	// move all children to their proper parents
@@ -428,10 +426,10 @@ plt.Jsworld = {};
 	return concat_map(sexp, sexp2css_node);
     }
 
-    function do_redraw() {
+    function do_redraw(world, toplevelNode, redraw_func, redraw_css_func) {
 	var t = sexp2tree(redraw_func(world));
 	var ns = nodes(t);
-	update_dom(ns, relations(t));
+	update_dom(toplevelNode, ns, relations(t));
 	update_css(ns, sexp2css(redraw_css_func(world)));
     }
 
@@ -439,20 +437,26 @@ plt.Jsworld = {};
 
     Jsworld.big_bang = function(top, 
 				init_world, 
-				redraw, redraw_css, delay, tick, attribs) {
-	toplevelNode = top;
-	redraw_func = redraw;
-	redraw_css_func = redraw_css;
+				redraw, 
+				redraw_css, 
+				delay, 
+				tick, 
+				attribs) {
 
-	addWorldListener(function(w) { do_redraw(); });
+	addWorldListener(function(w) { do_redraw(w, top, redraw, redraw_css); });
+
+
+	copy_attribs(top, attribs);
+
+
 
 	setInterval(function () { changeWorld(tick); }, delay);
 	// do we want something for body too?
 	//copy_attribs(toplevelNode, attribs);
-	copy_attribs(window, attribs);
 
 
 	changeWorld(function(w) { return init_world; });
+
     }
 
 
@@ -477,7 +481,10 @@ plt.Jsworld = {};
 
     // apparently add_event is taken...
     function add_ev(node, event, f) {
-	node.addEventListener(event, function (e) { world = f(world, e); do_redraw(); }, false);
+	node.addEventListener(event, 
+			      function (e) { 
+				  changeWorld(function(w) { return f(w, e); }) }, 
+			      false);
     }
 
     function copy_attribs(node, attribs) {
