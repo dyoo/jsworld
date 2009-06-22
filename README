@@ -1,0 +1,45 @@
+JSWorld API
+
+Summary
+=======
+[Fill me in]
+
+
+
+Examples
+========
+[Fill me in]
+
+
+
+
+Types
+=====
+
+sexp: (cons node (listof sexp))
+css-style: (node (listof (list string string)))
+
+
+
+
+
+
+Functions
+=========
+
+plt.Jsworld.bigBang: world (world -> sexp) (world -> (listof css-style)) number (world -> world) (listof (list string string)) -> world
+
+
+plt.Jsworld.p: assoc -> node
+
+
+plt.Jsworld.div: assoc -> node
+
+
+plt.Jsworld.button: (world -> world) assoc -> node
+
+
+plt.Jsworld.input: string assoc -> node
+
+
+plt.Jsworld.text: string assoc -> node
