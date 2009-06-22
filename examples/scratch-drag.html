@@ -4,11 +4,13 @@
     <script type="text/javascript" src="../jsworld.js"></script>
     
     <script type="text/javascript">
+      var jsworld = plt.Jsworld;
+
       var init_world = {
         trees: [], // list of trees
         entries: [], // list of nodes
         headers: [], // list of nodes
-        answer: text(""),
+        answer: jsworld.text(""),
         counter: 1,
         positions: [], // list of { node: node, x: int, y: int }
         
@@ -26,10 +28,10 @@
       }
       
       function apply_drag(world) {
-        return augment(world, {
-          positions: map(world.positions, function (position) {
-            if (memberq(world.drag_info.dragging, position.node))
-              return augment(position, { x: position.x + world.drag_info.delta_x,
+        return jsworld.augment(world, {
+          positions: jsworld.map(world.positions, function (position) {
+            if (jsworld.memberq(world.drag_info.dragging, position.node))
+              return jsworld.augment(position, { x: position.x + world.drag_info.delta_x,
                                          y: position.y + world.drag_info.delta_y });
             else
               return position;
@@ -39,16 +41,16 @@
       
       // for some reason keystrokes to window don't work in WebKit
       function cancel_drag(world) {
-        return augment(world, {
-          drag_info: augment(world.drag_info, { dragging: [] })
+        return jsworld.augment(world, {
+          drag_info: jsworld.augment(world.drag_info, { dragging: [] })
         });
       }
       
       function start_drag(node) {
         return function (world, ev) {
-          return augment(world, {
+          return jsworld.augment(world, {
             drag_info: {
-              dragging: cons(world.drag_info.dragging, node),
+              dragging: jsworld.cons(world.drag_info.dragging, node),
               init_x: ev.clientX, init_y: ev.clientY,
               delta_x: 0, delta_y: 0,
             }
@@ -57,8 +59,8 @@
       }
       
       function continue_drag(world, ev) {
-        return augment(world, {
-          drag_info: augment(world.drag_info, {
+        return jsworld.augment(world, {
+          drag_info: jsworld.augment(world.drag_info, {
             delta_x: ev.clientX - world.drag_info.init_x,
             delta_y: ev.clientY - world.drag_info.init_y,
           })
@@ -74,24 +76,24 @@
       // END DRAGGING STUFF
       
       function add_event(world) {
-        var box = div({ className: "box" });
-        var header = p({
+        var box = jsworld.div({ className: "box" });
+        var header = jsworld.p({
           className: "header",
           mousedown: start_drag(box),
         });
-        var header_text = text("Box #" + world.counter + ": " + name_entry.value);
-        var entry = input("text");
+        var header_text = jsworld.text("Box #" + world.counter + ": " + name_entry.value);
+        var entry = jsworld.input("text");
         var tree_node;
         
-        var remove = button(function (world) {
-          return augment(world, {
-            trees: removeq(world.trees, tree_node),
-            entries: removeq(world.entries, entry),
-            headers: removeq(world.headers, header),
-            positions: removef(world.positions, function (pos) { return (pos.node === box) }),
+        var remove = jsworld.button(function (world) {
+          return jsworld.augment(world, {
+            trees: jsworld.removeq(world.trees, tree_node),
+            entries: jsworld.removeq(world.entries, entry),
+            headers: jsworld.removeq(world.headers, header),
+            positions: jsworld.removef(world.positions, function (pos) { return (pos.node === box) }),
           });
         });
-        var remove_text = text("X");
+        var remove_text = jsworld.text("X");
         
         tree_node =
           [box,
@@ -100,12 +102,12 @@
         
         var box_position = { node: box, x: 10, y: world.counter * 100 };
         
-        return augment(world, {
+        return jsworld.augment(world, {
           counter: world.counter + 1,
-          trees: cons(world.trees, tree_node),
-          entries: cons(world.entries, entry),
-          headers: cons(world.headers, header),
-          positions: cons(world.positions, box_position),
+          trees: jsworld.cons(world.trees, tree_node),
+          entries: jsworld.cons(world.entries, entry),
+          headers: jsworld.cons(world.headers, header),
+          positions: jsworld.cons(world.positions, box_position),
         });
       }
       
@@ -115,20 +117,20 @@
         for (var i = 0; i < world.entries.length; i++)
           r += parseFloat(world.entries[i].value);
         
-        return augment(world, { answer: text("" + r) });
+        return jsworld.augment(world, { answer: jsworld.text("" + r) });
       }
       
-      var name_entry = input("text");
+      var name_entry = jsworld.input("text");
       
-      var add_button = button(add_event);
-      var add_button_text = text("Add more!");
+      var add_button = jsworld.button(add_event);
+      var add_button_text = jsworld.text("Add more!");
       
-      var compute_button = button(compute_event);
-      var compute_button_text = text("Compute!");
+      var compute_button = jsworld.button(compute_event);
+      var compute_button_text = jsworld.text("Compute!");
       
-      var answer_text = text("Answer:");
+      var answer_text = jsworld.text("Answer:");
       
-      var the_div = div();
+      var the_div = jsworld.div();
       
       function redraw(world) {
         return [document.body,
@@ -147,7 +149,7 @@
           ["box", ["border", "thin", "solid", "black"],
                   ["width", "200px"],
                   ["margin", "10px"]]
-        ].concat(map((dragging(world) ? apply_drag(world) : world).positions,
+        ].concat(jsworld.map((dragging(world) ? apply_drag(world) : world).positions,
           function (pos) {
             return [pos.node, ["position", "absolute"],
                                   ["left", pos.x + "px"],
@@ -161,7 +163,7 @@
     </script>
   </head>
   
-  <body onload="big_bang(init_world, redraw, redraw_css, 100, tick,
+  <body onload="jsworld.big_bang(window.document.body, init_world, redraw, redraw_css, 100, tick,
     { mousemove: continue_drag,
       mouseup: complete_drag,
       keypress: cancel_drag })">
