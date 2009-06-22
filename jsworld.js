@@ -25,8 +25,8 @@ plt.Jsworld = {};
 
     // pc (profiling) stuff
 
-    var pc_times = {}, pc_counts = {};
-    var pc_time;
+    //    var pc_times = {}, pc_counts = {};
+    //    var pc_time;
 
 
 
@@ -223,36 +223,36 @@ plt.Jsworld = {};
     }
 
 
-    function pcClear() {
-	pc_time = new Date().getTime();
-    }
+//     function pcClear() {
+// 	pc_time = new Date().getTime();
+//     }
 
-    function pcRead(label) {
-	var then = pc_time;
-	pc_time = new Date().getTime();
+//     function pcRead(label) {
+// 	var then = pc_time;
+// 	pc_time = new Date().getTime();
 	
-	if (label in pc_times) {
-	    pc_times[label] += pc_time - then;
-	    pc_counts[label]++;
-	}
-	else {
-	    pc_times[label] = pc_time - then;
-	    pc_counts[label] = 1;
-	}
-    }
+// 	if (label in pc_times) {
+// 	    pc_times[label] += pc_time - then;
+// 	    pc_counts[label]++;
+// 	}
+// 	else {
+// 	    pc_times[label] = pc_time - then;
+// 	    pc_counts[label] = 1;
+// 	}
+//     }
 
-    function pcDump() {
-	var s = [];
+//     function pcDump() {
+// 	var s = [];
 	
-	for (label in pc_times)
-	    s.push(label + ": " + (pc_times[label] / pc_counts[label]));
+// 	for (label in pc_times)
+// 	    s.push(label + ": " + (pc_times[label] / pc_counts[label]));
 	
-	return s;
-    }
+// 	return s;
+//     }
 
     // update_dom(nodes(Node), relations(Node)) = void
     function update_dom(nodes, relations) {
-	pcClear();
+	//	pcClear();
 	
 	// move all children to their proper parents
 	for (var i = 0; i < relations.length; i++)
@@ -263,7 +263,7 @@ plt.Jsworld = {};
 		    parent.appendChild(child);
 	    }
 	
-	pcRead('move');
+	//      pcRead('move');
 	
 	// arrange siblings in proper order
 	// truly terrible... BUBBLE SORT
@@ -283,7 +283,7 @@ plt.Jsworld = {};
 	    if (!unsorted) break;
 	}
 	
-	pcRead('sort');
+	//       pcRead('sort');
 	
 	// remove dead nodes
 	var live_nodes;
@@ -314,7 +314,7 @@ plt.Jsworld = {};
 	    live_nodes = null;
 	}
 	
-	pcRead('prune sort');
+	//	pcRead('prune sort');
 	
 	var node = toplevelNode, stop = toplevelNode.parentNode;
 	while (node !== stop) {
@@ -360,7 +360,7 @@ plt.Jsworld = {};
 	    }
 	}
 	
-	pcRead('prune');
+	//	pcRead('prune');
     }
 
     function set_css_attribs(node, attribs) {
