@@ -145,6 +145,8 @@ function getKeyCodeName(e) {
 
 
 <body onload="jsworld.big_bang(window.document.body,
-	                       new World(), redraw, redraw_css, [jsworld.on_tick(100, tick)])">
+	                       new World(),
+                               [jsworld.on_draw(redraw, redraw_css),
+                                jsworld.on_tick(100, tick)])">
 </body>
 </html>

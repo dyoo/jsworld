@@ -22,22 +22,39 @@ plt.Jsworld = {};
 
     var world;
     var worldListeners = [];
+    var runningBigBangs = [];
 
 
 
-    // changeWorld: (world -> world) -> void
+
+    function add_world_listener(listener) {
+	worldListeners.push(listener);
+    }
+
+
+    function remove_world_listener(listener) {
+	var index = worldListeners.indexOf(listener);
+	if (index != -1) {
+	    worldListeners.splice(index, 1);
+	}
+    }
+
+    function clear_world_listeners() {
+	worldListeners = [];
+    }
+
+
+
+    // change_world: (world -> world) -> void
     // Adjust the world, and notify all listeners.
-    function changeWorld(updater) {
+    function change_world(updater) {
 	world = updater(world);
 	for(var i = 0; i < worldListeners.length; i++) {
 	    worldListeners[i](world);
 	}
     }
+    Jsworld.change_world = change_world;
 
-
-    function addWorldListener(listener) {
-	worldListeners.push(listener);
-    }
 
 
 
@@ -435,46 +452,147 @@ plt.Jsworld = {};
 
 
 
-    Jsworld.big_bang = function(top, 
-				init_world, 
-				redraw, 
-				redraw_css, 
-				handlers,
-				attribs) {
+    //////////////////////////////////////////////////////////////////////
 
-	addWorldListener(function(w) { 
-		do_redraw(w, top, redraw, redraw_css); });
-	for(var i = 0 ; i < handlers.length; i++) {
-	    handlers[i].onRegister();
-	}
-	copy_attribs(top, attribs);
-	changeWorld(function(w) { return init_world; });
+    function BigBangRecord(top, world, handlerCreators, handlers, attribs) {    
+	this.top = top;
+	this.world = world;
+	this.handlers = handlers;
+	this.handlerCreators = handlerCreators;
+	this.attribs = attribs;
     }
 
+    BigBangRecord.prototype.restart = function() {
+	big_bang(this.top, this.world, this.handlerCreators, this.attribs);
+    }
+    
+    BigBangRecord.prototype.pause = function() {
+	for(var i = 0 ; i < this.handlers.length; i++) {
+	    if (this.handlers[i] instanceof StopWhenHandler) {
+		// Do nothing for now.
+	    } else {
+		this.handlers[i].onUnregister(top);
+	    }
+	}
+    };
+    //////////////////////////////////////////////////////////////////////
 
-//     function onDraw(f) {
-// 	// fill me in
-//     }
+    // Notes: big_bang maintains a stack of activation records; it should be possible
+    // to call big_bang re-entrantly.
+    function big_bang(top, init_world, handlerCreators, attribs) {
+	clear_world_listeners();
 
-//     function onDrawCss(f) {
-//     }
+	// Construct a fresh set of the handlers.
+	var handlers = map(handlerCreators, function(x) { return x();} );
+	if (runningBigBangs.length > 0) { 
+	    runningBigBangs[runningBigBangs.length - 1].pause();
+	}
+
+	// Create an activation record for this big-bang.
+	var activationRecord = 
+	    new BigBangRecord(top, init_world, handlerCreators, handlers, attribs);
+	runningBigBangs.push(activationRecord);
+	function keepRecordUpToDate(w) {
+	    activationRecord.world = w;
+	}
+	add_world_listener(keepRecordUpToDate);
 
 
-    function on_tick(delay, tick) {
-	var ticker = {
-	    watchId: -1,
-	    onRegister: function () { 
-		ticker.watchId = setInterval(function() { changeWorld(tick); },
-					     delay);
-	    },
 
-	    onUnregister: function () {
-		clearInterval(ticker.watchId);
+	// Monitor for termination and register the other handlers.
+	var stopWhen = new StopWhenHandler(function(w) { return false; },
+					   function(w) {});
+	for(var i = 0 ; i < handlers.length; i++) {
+	    if (handlers[i] instanceof StopWhenHandler) {
+		stopWhen = handlers[i];
+	    } else {
+		handlers[i].onRegister(top);
+	    }
+	}
+	function watchForTermination(w) {
+	    if (stopWhen.test(w)) {
+		stopWhen.receiver(world);		    
+		var currentRecord = runningBigBangs.pop();
+		currentRecord.pause();
+		if(runningBigBangs.length > 0) {
+		    var restartingBigBang = runningBigBangs.pop();
+		    restartingBigBang.restart();
+		}
 	    }
 	};
-	return ticker;
+	add_world_listener(watchForTermination);
+
+
+	// Finally, begin the big-bang.
+	copy_attribs(top, attribs);
+	change_world(function(w) { return init_world; });
+
+
+    }
+    Jsworld.big_bang = big_bang;
+
+
+
+
+    // on_tick: number (world -> world) -> handler
+    function on_tick(delay, tick) {
+	return function() {
+	    var ticker = {
+		watchId: -1,
+		onRegister: function (top) { 
+		    ticker.watchId = setInterval(function() { change_world(tick); },
+						 delay);
+		},
+
+		onUnregister: function (top) {
+		    clearInterval(ticker.watchId);
+		}
+	    };
+	    return ticker;
+	};
     }
     Jsworld.on_tick = on_tick;
+
+
+    
+    //  on_draw: (world -> (sexpof node)) (world -> (sexpof css-style)) -> handler
+    function on_draw(redraw, redraw_css) {
+	return function() {
+	    var drawer = {
+		_top: null,
+		_listener: function(w) { 
+		    do_redraw(w, drawer._top, redraw, redraw_css); 
+		},
+		onRegister: function (top) { 
+		    drawer._top = top;
+		    add_world_listener(drawer._listener);
+		},
+
+		onUnregister: function (top) {
+		    remove_world_listener(drawer._listener);
+		}
+	    };
+	    return drawer;
+	};
+    }
+    Jsworld.on_draw = on_draw;
+
+
+
+    function StopWhenHandler(test, receiver) {
+	this.test = test;
+	this.receiver = receiver;
+    }
+    // stop_when: (world -> boolean) (world -> boolean) -> handler
+    function stop_when(test, receiver) {
+	return function() {
+	    if (receiver == undefined) {
+		receiver = function(world) {};
+	    }
+	    return new StopWhenHandler(test, receiver);
+	};
+    }
+    Jsworld.stop_when = stop_when;
 
 
 
@@ -487,7 +605,9 @@ plt.Jsworld = {};
     function add_ev(node, event, f) {
 	node.addEventListener(event, 
 			      function (e) { 
-				  changeWorld(function(w) { return f(w, e); }) }, 
+				  change_world(function(w) { 
+					  return f(w, e); 
+				      }) }, 
 			      false);
     }
 
