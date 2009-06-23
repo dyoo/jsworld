@@ -7,6 +7,9 @@ plt.Jsworld = {};
 
 
 
+
+
+
 // Stuff here is copy-and-pasted from Chris's JSWorld.  We
 // namespace-protect it, and add the Javascript <-> Moby wrapper
 // functions here.
@@ -58,22 +61,25 @@ plt.Jsworld = {};
 
 
 
-    // pc (profiling) stuff
-
-    //    var pc_times = {}, pc_counts = {};
-    //    var pc_time;
-
-
-
-
-
-
-
-
-
     //
     // STUFF THAT SHOULD REALLY BE IN ECMASCRIPT
     //
+    Number.prototype.NaN0=function(){return isNaN(this)?0:this;}
+    function getPosition(e){
+	var left = 0;
+	var top  = 0;
+	while (e.offsetParent){
+	    left += e.offsetLeft + (e.currentStyle?(parseInt(e.currentStyle.borderLeftWidth)).NaN0():0);
+	    top  += e.offsetTop  + (e.currentStyle?(parseInt(e.currentStyle.borderTopWidth)).NaN0():0);
+	    e     = e.offsetParent;
+	}
+	left += e.offsetLeft + (e.currentStyle?(parseInt(e.currentStyle.borderLeftWidth)).NaN0():0);
+	top  += e.offsetTop  + (e.currentStyle?(parseInt(e.currentStyle.borderTopWidth)).NaN0():0);
+	return {x:left, y:top};	
+    }
+
+    var gensym_counter = 0;
+    function gensym(){ return gensym_counter++;}
 
     function map(a, f) {
 	var b = new Array(a.length);
@@ -83,12 +89,13 @@ plt.Jsworld = {};
     Jsworld.map = map;
 
 
+
     function concat_map(a, f) {
 	var b = [];
 	for (var i = 0; i < a.length; i++) b = b.concat(f(a[i]));
 	return b;
     }
-    Jsworld.concat_map = concat_map;
+
 
     function mapi(a, f) {
 	var b = new Array(a.length);
@@ -102,7 +109,6 @@ plt.Jsworld = {};
 	for (var i = 0; i < a.length; i++)
 	    x = f(a[i], x);
 	return x;
-
     }
     Jsworld.fold = fold;
 
@@ -128,21 +134,34 @@ plt.Jsworld = {};
     Jsworld.assoc_cons = assoc_cons;
 
 
-
     function cons(array, value) {
 	return array.concat([value]);
     }
     Jsworld.cons = cons;
 
 
+    function append(array1, array2){
+	return array1.concat(array2);
+    }
+    Jsworld.append = append;
+
+    function array_join(array1, array2){
+	var joined = [];
+	for (var i = 0; i < array1.length; i++)
+	    joined.push([array1[i], array2[i]]);
+	return joined;
+    }
+    Jsworld.array_join = array_join;
+
+
     function removeq(array, value) {
 	for (var i = 0; i < array.length; i++)
-	    if (array[i] === value)
+	    if (array[i] === value){
 		return array.slice(0, i).concat(array.slice(i+1));
+	    }			
 	return array;
     }
     Jsworld.removeq = removeq;
-
 
     function removef(array, f) {
 	for (var i = 0; i < array.length; i++)
@@ -151,6 +170,15 @@ plt.Jsworld = {};
 	return array;
     }
     Jsworld.removef = removef;
+
+
+    function filter(array, f) {
+	for (var i = 0; i < array.length; i++)
+	    if (f(array[i]))
+		return array.slice(0, i).concat(filter(array.slice(i+1), f));
+	return array;
+    }
+    Jsworld.filter = filter;
 
 
     function without(obj, attrib) {
@@ -163,15 +191,24 @@ plt.Jsworld = {};
     Jsworld.without = without;
 
 
-
     function memberq(a, x) {
 	for (var i = 0; i < a.length; i++)
 	    if (a[i] === x) return true;
 	return false;
     }
     Jsworld.memberq = memberq;
-    
 
+
+    function head(a){
+	return a[0];
+    }
+    Jsworld.head = head;
+
+
+    function tail(a){
+	return a.slice(1, a.length);
+    }
+    Jsworld.tail = tail;
 
     //
     // DOM UPDATING STUFFS
@@ -192,7 +229,7 @@ plt.Jsworld = {};
     for (var i = 0; i < relations.length; i++)
     if (relations[i].relation == 'neighbor') {
     var x = relations[i].left, y = relations[i].right;
-			
+ 
     // there does not exist a neighbor relation between x and z!=y or z!=x and y
     for (var j = 0; j < relations.length; j++)
     if (relations[j].relation === 'neighbor')
@@ -200,24 +237,24 @@ plt.Jsworld = {};
     relations[j].left !== x && relations[j].right === y)
     return false;
     }
-	
+ 
     // for all parent relations between x and y
     for (var i = 0; i < relations.length; i++)
     if (relations[i].relation == 'parent') {
     var x = relations[i].parent, y = relations[i].child;
-			
+ 
     // there does not exist a parent relation between z!=x and y
     for (var j = 0; j < relations.length; j++)
     if (relations[j].relation == 'parent')
     if (relations[j].parent !== x && relations[j].child === y)
     return false;
     }
-	
+ 
     // for all neighbor relations between x and y
     for (var i = 0; i < relations.length; i++)
     if (relations[i].relation == 'neighbor') {
     var x = relations[i].left, y = relations[i].right;
-			
+ 
     // all parent relations between z and x or y share the same z
     for (var j = 0; j < relations.length; j++)
     if (relations[j].relation == 'parent')
@@ -227,7 +264,7 @@ plt.Jsworld = {};
     relations[j].parent !== relations[k].parent)
     return false;
     }
-	
+ 
     return true;
     }*/
 
@@ -257,48 +294,18 @@ plt.Jsworld = {};
 	return ret;
     }
 
-
-//     function pcClear() {
-// 	pc_time = new Date().getTime();
-//     }
-
-//     function pcRead(label) {
-// 	var then = pc_time;
-// 	pc_time = new Date().getTime();
-	
-// 	if (label in pc_times) {
-// 	    pc_times[label] += pc_time - then;
-// 	    pc_counts[label]++;
-// 	}
-// 	else {
-// 	    pc_times[label] = pc_time - then;
-// 	    pc_counts[label] = 1;
-// 	}
-//     }
-
-//     function pcDump() {
-// 	var s = [];
-	
-// 	for (label in pc_times)
-// 	    s.push(label + ": " + (pc_times[label] / pc_counts[label]));
-	
-// 	return s;
-//     }
-
     // update_dom(nodes(Node), relations(Node)) = void
     function update_dom(toplevelNode, nodes, relations) {
-	//	pcClear();
+	// TODO: rewrite this to move stuff all in one go... possible? necessary?
 	
 	// move all children to their proper parents
 	for (var i = 0; i < relations.length; i++)
 	    if (relations[i].relation == 'parent') {
 		var parent = relations[i].parent, child = relations[i].child;
 			
-		if (child.parentNode === null || !parent.isSameNode(child.parentNode))
+		if (child.parentNode !== parent)
 		    parent.appendChild(child);
 	    }
-	
-	//      pcRead('move');
 	
 	// arrange siblings in proper order
 	// truly terrible... BUBBLE SORT
@@ -317,8 +324,6 @@ plt.Jsworld = {};
 		
 	    if (!unsorted) break;
 	}
-	
-	//       pcRead('sort');
 	
 	// remove dead nodes
 	var live_nodes;
@@ -349,28 +354,30 @@ plt.Jsworld = {};
 	    live_nodes = null;
 	}
 	
-	//	pcRead('prune sort');
-	
 	var node = toplevelNode, stop = toplevelNode.parentNode;
-	while (node !== stop) {
+	while (node != stop) {
 	    for (;;) {
 		// process first
 		// move down
-		if (node.firstChild === null) break;
+		if (node.firstChild == null) break;
 		node = node.firstChild;
 	    }
 		
-	    while (node !== stop) {
+	    while (node != stop) {
 		var next = node.nextSibling, parent = node.parentNode;
 			
 		// process last
 		var found = false;
 			
-		if (live_nodes !== null)
-		    while (live_nodes.length > 0 && node.isSameNode(live_nodes[0])) {
+		if (live_nodes != null)
+		    while (live_nodes.length > 0 && positionComparator(node, live_nodes[0]) >= 0) {
 			var other_node = live_nodes.shift();
-			found = true;
-			break;
+			if (other_node === node) {
+			    found = true;
+			    break;
+			}
+			// need to think about this
+			//live_nodes.push(other_node);
 		    }
 		else
 		    for (var i = 0; i < nodes.length; i++)
@@ -381,7 +388,7 @@ plt.Jsworld = {};
 			
 		if (!found) {
 		    // reparent children, remove node
-		    while (node.firstChild !== null)
+		    while (node.firstChild != null)
 			node.parentNode.appendChild(node.firstChild);
 				
 		    next = node.nextSibling; // HACKY
@@ -390,17 +397,17 @@ plt.Jsworld = {};
 		}
 			
 		// move sideways
-		if (next === null) node = parent;
+		if (next == null) node = parent;
 		else { node = next; break; }
 	    }
 	}
-	
-	//	pcRead('prune');
     }
 
     function set_css_attribs(node, attribs) {
-	for (var j = 0; j < attribs.length; j++)
-	    node.style.setProperty(attribs[j].attrib, attribs[j].values.join(" "), '');
+	for (var j = 0; j < attribs.length; j++){
+	    node.style.setProperty(attribs[j].attrib, attribs[j].values.join(" "), "");
+	}
+		
     }
 
     function update_css(nodes, css) {
@@ -411,37 +418,15 @@ plt.Jsworld = {};
 	
 	// set CSS
 	for (var i = 0; i < css.length; i++)
-	    if ('className' in css[i]) {
+	    if ('id' in css[i]) {
 		for (var j = 0; j < nodes.length; j++)
-		    if (nodes[j].className == css[i].className)
+		    if (nodes[j].id == css[i].id){
 			set_css_attribs(nodes[j], css[i].attribs);
+		    }
 	    }
 	    else set_css_attribs(css[i].node, css[i].attribs);
     }
 
-
-
-    function sexp2tree(sexp) {
-	return { node: sexp[0], children: map(sexp.slice(1), sexp2tree) };
-    }
-
-    function sexp2attrib(sexp) {
-	return { attrib: sexp[0], values: sexp.slice(1) };
-    }
-
-    function sexp2css_node(sexp) {
-	var attribs = map(sexp.slice(1), sexp2attrib);
-	if (typeof sexp[0] == 'string')
-	    return { className: sexp[0], attribs: attribs };
-	else if ('length' in sexp[0])
-	    return map(sexp[0], function (node) { return { node: node, attribs: attribs } });
-	else
-	    return { node: sexp[0], attribs: attribs };
-    }
-
-    function sexp2css(sexp) {
-	return concat_map(sexp, sexp2css_node);
-    }
 
     function do_redraw(world, toplevelNode, redraw_func, redraw_css_func) {
 	var t = sexp2tree(redraw_func(world));
@@ -611,39 +596,112 @@ plt.Jsworld = {};
 			      false);
     }
 
+
+    //
+    // WORLD STUFFS
+    //
+
+
+    function sexp2tree(sexp) {
+	if(sexp.length == undefined) return { node: sexp, children: [] };
+	else return { node: sexp[0], children: map(sexp.slice(1), sexp2tree) };
+    }
+
+    function sexp2attrib(sexp) {
+	return { attrib: sexp[0], values: sexp.slice(1) };
+    }
+
+    function sexp2css_node(sexp) {
+	var attribs = map(sexp.slice(1), sexp2attrib);
+	if (typeof sexp[0] == 'string'){
+	    return [{ id: sexp[0], attribs: attribs }];
+	} else if ('length' in sexp[0]){
+	    return map(sexp[0], function (id) { return { id: id, attribs: attribs } });
+	} else {
+	    return [{ node: sexp[0], attribs: attribs }];
+	}
+    }
+
+    function sexp2css(sexp) {
+	return concat_map(sexp, sexp2css_node);
+    }
+
+
+
+
+    //
+    // DOM CREATION STUFFS
+    //
+
+
     function copy_attribs(node, attribs) {
 	if (attribs)
 	    for (a in attribs)
 		if (typeof attribs[a] == 'function')
 		    add_ev(node, a, attribs[a]);
-		else
-		    node[a] = attribs[a];
+		else{
+		    node[a] = attribs[a];//eval("node."+a+"='"+attribs[a]+"'");
+		}
 	return node;
     }
 
-    Jsworld.p = function(attribs) {
+    function p(attribs) {
 	return copy_attribs(document.createElement('p'), attribs);
     }
+    Jsworld.p = p;
 
-    Jsworld.div = function(attribs) {
+    function div(attribs) {
 	return copy_attribs(document.createElement('div'), attribs);
     }
+    Jsworld.div = div;
 
-    Jsworld.button = function(f, attribs) {
+    function button(f, attribs) {
 	var n = document.createElement('button');
 	add_ev(n, 'click', f);
 	return copy_attribs(n, attribs);
     }
+    Jsworld.button = button;
 
-    Jsworld.input = function(type, attribs) {
+    function input(type, attribs) {
 	var n = document.createElement('input');
 	n.type = type;
 	return copy_attribs(n, attribs);
     }
+    Jsworld.input = input;
 
-    Jsworld.text = function(s, attribs) {
+    function text(s, attribs) {
 	return copy_attribs(document.createTextNode(s), attribs);
     }
+    Jsworld.text = text;
+
+    function select(attribs, opts, f){
+	var n = document.createElement('select');
+	for(var i = 0; i < opts.length; i++)
+	    n.appendChild(option({value: opts[i]}));
+	add_ev(n, 'change', f);
+	return copy_attribs(n, attribs);
+    }
+    Jsworld.select = select;
+
+    function option(attribs){
+	return copy_attribs(document.createElement('option'), attribs);
+    }
+    Jsworld.option = option;
+
+    function textarea(attribs){
+	return copy_attribs(document.createElement('textarea'), attribs);
+    }
+    Jsworld.textarea = textarea;
+
+    function h1(attribs){
+	return copy_attribs(document.createElement('h1'), attribs);
+    }
+    Jsworld.h1 = h1;
+
+    function canvas(attribs){
+	return copy_attribs(document.createElement('canvas'), attribs);	
+    }
+    Jsworld.canvas = canvas;
 
 
 })();
