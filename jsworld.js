@@ -51,7 +51,11 @@ plt.Jsworld = {};
     // change_world: (world -> world) -> void
     // Adjust the world, and notify all listeners.
     function change_world(updater) {
-	world = updater(world);
+	try {
+	    world = updater(world);
+	} catch(e) {
+	    return;
+	}
 	for(var i = 0; i < worldListeners.length; i++) {
 	    worldListeners[i](world);
 	}
@@ -520,6 +524,7 @@ plt.Jsworld = {};
 
     }
     Jsworld.big_bang = big_bang;
+
 
 
 
