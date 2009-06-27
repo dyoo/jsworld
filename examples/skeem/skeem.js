@@ -10,8 +10,8 @@ var init_world = {
 	drag_info: {
 		dragging: [], // list of nodes
 		init_x: 0, init_y: 0,
-		delta_x: 0, delta_y: 0,
-	},
+		delta_x: 0, delta_y: 0
+	}
 };
 
 function worldToString(world){
@@ -34,7 +34,8 @@ function expToString(exp){
 		case 'define':	return '{exp:define, id: '+exp.id+' value:'+expToString(exp.value); break;
 		case 'apply':	return '{exp:apply, id: '+exp.id+' fn:'+exp.fn+', inputs: ['+jsworld.map(exp.inputs, expToString)+']}'; break;
 		default: return 'ERROR - invalid expression type';		
-	}	
+	}
+        return 'ERROR - invalid expression type';
 }
 
 function styleToString(s){
@@ -50,7 +51,8 @@ function findExpById(id, world){
 			case 'define':	return (exp.id == id)? jsworld.cons(acc, exp) : jsworld.append(acc, jsworld.fold([exp.value], [], find)); break;
 			case 'apply':	return (exp.id == id)? jsworld.cons(acc, exp) : jsworld.append(acc, jsworld.fold(exp.inputs, [], find)); break;
 			default: return 'ERROR - invalid expression type';		
-		}	
+		}
+                return 'ERROR - invalid expression type';	
 	}
 	return jsworld.fold(world.expressions, [], find)[0];
 }
@@ -100,6 +102,7 @@ function stop_drag(world, ev) {
 				case 'apply':		return jsworld.augment(exp, {inputs: jsworld.map(exp.inputs, updateExp)}); break;
 				default:			return 'ERROR - invalid expression type';		
 			}
+		        return 'ERROR - invalid expression type';
 		}
 		// return a world in which the dragExp has been removed as a top-level exp,
 		// the styles for the target has been removed, the dragExp is no longer absolutely positioned,
@@ -146,6 +149,7 @@ function start_drag(node) {
 				case 'apply':		return (exp.id==node.id)? targetExp : jsworld.augment(exp, {inputs: jsworld.map(exp.inputs, updateExp)}); break;
 				default:			return 'ERROR - invalid expression type';		
 			}
+                        return 'ERROR - invalid expression type';
 		}
 
 		// if a matching ID is found in world.expressions, it's top level.
@@ -156,7 +160,7 @@ function start_drag(node) {
 								drag_info: {
 									dragging: jsworld.cons(world.drag_info.dragging, node),
 									init_x: ev.clientX, init_y: ev.clientY,
-									delta_x: 0, delta_y: 0,
+									delta_x: 0, delta_y: 0
 								   }
 							   });
 	};
@@ -182,7 +186,7 @@ function continue_drag(world, ev) {
 									styles:		jsworld.map(world.styles, udpateStyle),
 									drag_info:	jsworld.augment(world.drag_info, {
 													   delta_x: ev.clientX - world.drag_info.init_x,
-													   delta_y: ev.clientY - world.drag_info.init_y,
+													   delta_y: ev.clientY - world.drag_info.init_y
 													   })
 									})
 	: world;
@@ -286,6 +290,7 @@ function getFunctionInfo(op_name){
 		case "string=?":	return {inputs:['string','string'], constraints: ['string','string'], output:'boolean'};
 		default: alert('no match!');
 	}
+    throw new Error("getFunctionInfo for " + op_name);
 }
 
 // compute_event: World -> World
@@ -431,6 +436,7 @@ function typecheck(world){
 				return jsworld.augment(exp, {type: (correctTypes? functionInfo.output : "error"), inputs: children});
 			default: alert('ERROR - invalid expression type! exp.exp: '+exp.exp + ', exp: '+exp);
 		}
+	    throw new Error("typecheck (exp -> exp)");
 	}
 
 	return jsworld.augment(world, {expressions: jsworld.map(world.expressions, typecheckExp)});
@@ -458,6 +464,7 @@ function tree2sexp(exp){
 			break;
 		default: alert( 'ERROR - invalid expression type! exp.exp: '+exp.exp + ', exp: '+exp);
 	}
+    throw new Error("tree2sexp");
 } 
  
 // redraw: World -> DOM

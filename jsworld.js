@@ -54,6 +54,7 @@ plt.Jsworld = {};
 	try {
 	    world = updater(world);
 	} catch(e) {
+	    console.log(e);
 	    return;
 	}
 	for(var i = 0; i < worldListeners.length; i++) {
