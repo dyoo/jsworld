@@ -77,9 +77,13 @@ plt.Jsworld = {};
 	top  += e.offsetTop  + (e.currentStyle?(parseInt(e.currentStyle.borderTopWidth)).NaN0():0);
 	return {x:left, y:top};	
     }
+    Jsworld.getPosition = getPosition;
+
 
     var gensym_counter = 0;
     function gensym(){ return gensym_counter++;}
+    Jsworld.gensym = gensym;
+
 
     function map(a, f) {
 	var b = new Array(a.length);
@@ -303,8 +307,9 @@ plt.Jsworld = {};
 	    if (relations[i].relation == 'parent') {
 		var parent = relations[i].parent, child = relations[i].child;
 			
-		if (child.parentNode !== parent)
+		if (child.parentNode !== parent) {
 		    parent.appendChild(child);
+		}
 	    }
 	
 	// arrange siblings in proper order
@@ -702,6 +707,12 @@ plt.Jsworld = {};
 	return copy_attribs(document.createElement('canvas'), attribs);	
     }
     Jsworld.canvas = canvas;
+
+
+    function img(attribs) {
+	return copy_attribs(document.createElement('img'), attribs);
+    }
+    Jsworld.img = img;
 
 
 })();

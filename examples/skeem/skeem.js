@@ -15,8 +15,8 @@ var init_world = {
 };
 
 function worldToString(world){
-	var exps	= map(world.expressions, expToString);
-	var styles	= map(world.styles, function(s){
+	var exps	= jsworld.map(world.expressions, expToString);
+	var styles	= jsworld.map(world.styles, function(s){
 										var str = "";
 										for (var e in s) str+=s+': '+s[e]
 										  return '{'+str+'}';
@@ -30,9 +30,9 @@ function worldToString(world){
 function expToString(exp){
 	if(exp.exp == undefined) return '{exp: value, value:'+exp.value+', id: '+exp.id+'}';
 	switch(exp.exp){
-		case 'function':return '{exp:define, inputs: ['+map(exp.inputs, expToString)+'], output:'+expToString(exp.output)+', body: '+expToString(exp.body)+'}'; break;
+		case 'function':return '{exp:define, inputs: ['+jsworld.map(exp.inputs, expToString)+'], output:'+expToString(exp.output)+', body: '+expToString(exp.body)+'}'; break;
 		case 'define':	return '{exp:define, id: '+exp.id+' value:'+expToString(exp.value); break;
-		case 'apply':	return '{exp:apply, id: '+exp.id+' fn:'+exp.fn+', inputs: ['+map(exp.inputs, expToString)+']}'; break;
+		case 'apply':	return '{exp:apply, id: '+exp.id+' fn:'+exp.fn+', inputs: ['+jsworld.map(exp.inputs, expToString)+']}'; break;
 		default: return 'ERROR - invalid expression type';		
 	}	
 }
@@ -44,19 +44,19 @@ function styleToString(s){
 
 function findExpById(id, world){
 	var find = function(exp, acc){
-		if(exp.exp == undefined) return (exp.id == id)? cons(acc, exp) : acc;
+		if(exp.exp == undefined) return (exp.id == id)? jsworld.cons(acc, exp) : acc;
 		switch(exp.exp){
-			case 'function':return (exp.id == id)? cons(acc, exp) : append(acc, fold([exp.body], [], find)); break;
-			case 'define':	return (exp.id == id)? cons(acc, exp) : append(acc, fold([exp.value], [], find)); break;
-			case 'apply':	return (exp.id == id)? cons(acc, exp) : append(acc, fold(exp.inputs, [], find)); break;
+			case 'function':return (exp.id == id)? jsworld.cons(acc, exp) : jsworld.append(acc, jsworld.fold([exp.body], [], find)); break;
+			case 'define':	return (exp.id == id)? jsworld.cons(acc, exp) : jsworld.append(acc, jsworld.fold([exp.value], [], find)); break;
+			case 'apply':	return (exp.id == id)? jsworld.cons(acc, exp) : jsworld.append(acc, jsworld.fold(exp.inputs, [], find)); break;
 			default: return 'ERROR - invalid expression type';		
 		}	
 	}
-	return fold(world.expressions, [], find)[0];
+	return jsworld.fold(world.expressions, [], find)[0];
 }
 
 function findById(array, id){
-	return fold(array, [], function(elt, acc){ return (elt.id == id)? cons(acc,elt) : acc})[0];
+	return jsworld.fold(array, [], function(elt, acc){ return (elt.id == id)? jsworld.cons(acc,elt) : acc})[0];
 }
 /***************************************************************
  * DRAGGING STUFF
@@ -68,16 +68,16 @@ function dragging(world) {
 function apply_drag(world) {
 	var styleDrag = function (style) {
 		return (world.drag_info.dragging.length > 0 && world.drag_info.dragging[0].id == style.id)?
-				augment(style, {left: style.left + world.drag_info.delta_x, top: style.top + world.drag_info.delta_y})
+				jsworld.augment(style, {left: style.left + world.drag_info.delta_x, top: style.top + world.drag_info.delta_y})
 				: style;
 	}
-	return augment(world, {styles: map(world.styles, styleDrag)});
+	return jsworld.augment(world, {styles: jsworld.map(world.styles, styleDrag)});
 }
 
 function stop_drag(world, ev) {
 	// is a node being hovered over a given target?
 	var hovered = function(target){
-		var pos		= getPosition(target);
+		var pos		= jsworld.getPosition(target);
 		var xMin	= pos.x;
 		var yMin	= pos.y;
 		var xMax	= xMin+target.offsetWidth;
@@ -85,7 +85,7 @@ function stop_drag(world, ev) {
 		return (ev.clientX > xMin && ev.clientX < xMax && ev.clientY > yMin && ev.clientY < yMax);
 	}
 
-	var target	= fold(world.targets, [], function(target, acc){ return hovered(target)? cons(acc,target) : acc});
+	var target	= jsworld.fold(world.targets, [], function(target, acc){ return hovered(target)? jsworld.cons(acc,target) : acc});
 
 	if(dragging(world) && target.length > 0 ){
 		var dragId	= world.drag_info.dragging[0].id;
@@ -97,27 +97,27 @@ function stop_drag(world, ev) {
 			switch(exp.exp){
 				case 'define':		break;
 				case 'function':	break;
-				case 'apply':		return augment(exp, {inputs: map(exp.inputs, updateExp)}); break;
+				case 'apply':		return jsworld.augment(exp, {inputs: jsworld.map(exp.inputs, updateExp)}); break;
 				default:			return 'ERROR - invalid expression type';		
 			}
 		}
 		// return a world in which the dragExp has been removed as a top-level exp,
 		// the styles for the target has been removed, the dragExp is no longer absolutely positioned,
 		// the target itself has also been removed, and the dragging array is reset to null
-		var newStyles	= map(world.styles, function(s){return (s.id==dragId)? augment(s, {position:'', opacity:''}) : s});
-		return augment(world, {	expressions:removef(map(world.expressions, updateExp),function(exp){return exp.id == dragId}),
+		var newStyles	= jsworld.map(world.styles, function(s){return (s.id==dragId)? jsworld.augment(s, {position:'', opacity:''}) : s});
+		return jsworld.augment(world, {	expressions:removef(jsworld.map(world.expressions, updateExp),function(exp){return exp.id == dragId}),
 											styles:		removef(newStyles,	function(s){return s.id==target[0].id}),
 											targets:	removef(world.targets,	function(t){return t.id == target[0].id}),
-											drag_info:	augment(world.drag_info, { dragging: [] })
+											drag_info:	jsworld.augment(world.drag_info, { dragging: [] })
 											});
 
 	} else {
 		// return to full opacity
 		var unStyleDrag = function (style) {
-			return augment(style, { opacity: "1.00", zIndex: "", background: ''});
+			return jsworld.augment(style, { opacity: "1.00", zIndex: "", background: ''});
 		}
-		return augment(world, {	styles:		map(world.styles, unStyleDrag),
-								drag_info:	augment(world.drag_info, { dragging: [] })
+		return jsworld.augment(world, {	styles:		jsworld.map(world.styles, unStyleDrag),
+								drag_info:	jsworld.augment(world.drag_info, { dragging: [] })
 							});
 	}
 }
@@ -126,15 +126,15 @@ function stop_drag(world, ev) {
 // 2) If the exp is NOT top-level, replace it with an empty target
 function start_drag(node) {
 	var styleDrag = function (style) {
-		return (node.id == style.id)? augment(style, { opacity: ".80", zIndex: "999"}) : style;
+		return (node.id == style.id)? jsworld.augment(style, { opacity: ".80", zIndex: "999"}) : style;
 	}
 	
 	return function (world, ev) {
 		var dragExp		= findExpById(node.id, world);
 		var dragStyle	= findById(world.styles, node.id);
-		var newStyles	= map(world.styles, function(s){return (s.id==dragStyle.id)? augment(s, {position: 'absolute',opacity: '.8', zIndex:'999'}) : s});
+		var newStyles	= jsworld.map(world.styles, function(s){return (s.id==dragStyle.id)? jsworld.augment(s, {position: 'absolute',opacity: '.8', zIndex:'999'}) : s});
 		var targetExp	= makeValue(null, null);
-		var targetStyle	= augment(dragStyle, {id: targetExp.id});
+		var targetStyle	= jsworld.augment(dragStyle, {id: targetExp.id});
 		
 		
 		// recursively crawl down the tree, and replace the dragged exp with the new target
@@ -143,18 +143,18 @@ function start_drag(node) {
 			switch(exp.exp){
 				case 'define':		break;
 				case 'function':	break;
-				case 'apply':		return (exp.id==node.id)? targetExp : augment(exp, {inputs: map(exp.inputs, updateExp)}); break;
+				case 'apply':		return (exp.id==node.id)? targetExp : jsworld.augment(exp, {inputs: jsworld.map(exp.inputs, updateExp)}); break;
 				default:			return 'ERROR - invalid expression type';		
 			}
 		}
 
 		// if a matching ID is found in world.expressions, it's top level.
 		var topLevel	= (findById(world.expressions, node.id) !== undefined);
-		return augment(world, {	expressions:topLevel? world.expressions : cons(map(world.expressions, updateExp),dragExp),
-								styles:		topLevel? newStyles : cons(newStyles, targetStyle),
-								targets:	topLevel? world.targets : cons(world.targets, targetExp),
+		return jsworld.augment(world, {	expressions:topLevel? world.expressions : jsworld.cons(jsworld.map(world.expressions, updateExp),dragExp),
+								styles:		topLevel? newStyles : jsworld.cons(newStyles, targetStyle),
+								targets:	topLevel? world.targets : jsworld.cons(world.targets, targetExp),
 								drag_info: {
-									dragging: cons(world.drag_info.dragging, node),
+									dragging: jsworld.cons(world.drag_info.dragging, node),
 									init_x: ev.clientX, init_y: ev.clientY,
 									delta_x: 0, delta_y: 0,
 								   }
@@ -166,11 +166,11 @@ function continue_drag(world, ev) {
 	//  highlight any target that is being hovered over
 	var udpateStyle = function(style){
 		if( style.id.search("val_") == -1 ) return style;
-		else return hovered(findById(world.targets, style.id))? augment(style, {background:'gray'}): augment(style, {background:''});
+		else return hovered(findById(world.targets, style.id))? jsworld.augment(style, {background:'gray'}): jsworld.augment(style, {background:''});
 	}
 	// is the mouse hovering over a target?
 	var hovered = function(target){
-		var pos		= getPosition(target);
+		var pos		= jsworld.getPosition(target);
 		var xMin	= pos.x;
 		var yMin	= pos.y;
 		var xMax	= xMin+target.offsetWidth;
@@ -178,9 +178,9 @@ function continue_drag(world, ev) {
 		return ev.clientX > xMin && ev.clientX < xMax && ev.clientY > yMin && ev.clientY < yMax;
 	}
 
-	return dragging(world)? augment(world, {
-									styles:		map(world.styles, udpateStyle),
-									drag_info:	augment(world.drag_info, {
+	return dragging(world)? jsworld.augment(world, {
+									styles:		jsworld.map(world.styles, udpateStyle),
+									drag_info:	jsworld.augment(world.drag_info, {
 													   delta_x: ev.clientX - world.drag_info.init_x,
 													   delta_y: ev.clientY - world.drag_info.init_y,
 													   })
@@ -202,18 +202,18 @@ function complete_drag(world, ev) {
 // generate an id, populate with children of appropriate type/constraint, and add the tree to the world
 function addExp(op_name, inputs, constraints, output){
 	return function(world){
-		var unique	= 'exp_'+gensym();
-		var params	= array_join(inputs, constraints);
-		var children= map(params, function(param){return makeValue(param[0], param[1])});
-		var c_styles= map(children,function(child){ return {id: child.id}});
+		var unique	= 'exp_'+jsworld.gensym();
+		var params	= jsworld.array_join(inputs, constraints);
+		var children= jsworld.map(params, function(param){return makeValue(param[0], param[1])});
+		var c_styles= jsworld.map(children,function(child){ return {id: child.id}});
 		var exp		= {exp: 'apply', fn: op_name, type: output, id: unique, inputs: children };
 		var e_style	= {id: unique, position: 'absolute', left: 175, top: world.counter * 100};
-		var styles	= cons(c_styles, e_style);
-		return augment(world, {
+		var styles	= jsworld.cons(c_styles, e_style);
+		return jsworld.augment(world, {
 					   counter:		world.counter + 1,
-					   expressions:	cons(world.expressions, exp),
-					   styles:		append(world.styles, styles),
-					   targets:		append(world.targets, children)
+					   expressions:	jsworld.cons(world.expressions, exp),
+					   styles:		jsworld.append(world.styles, styles),
+					   targets:		jsworld.append(world.targets, children)
 					   });
 	}	
 }
@@ -222,17 +222,17 @@ function addExp(op_name, inputs, constraints, output){
 function addValue(world){
 	var exp		= makeValue(null,null);
 	var style	= {id: exp.id, position: 'absolute', left: 175, top: world.counter * 100};
-	return augment(world, {
+	return jsworld.augment(world, {
 				   counter:		world.counter + 1,
-				   expressions:	cons(world.expressions, exp),
-				   styles:		cons(world.styles, style),
-				   targets:		cons(world.targets, exp)
+				   expressions:	jsworld.cons(world.expressions, exp),
+				   styles:		jsworld.cons(world.styles, style),
+				   targets:		jsworld.cons(world.targets, exp)
 				   });
 }
 
 // makeValue: Type Constraint -> DOM
 function makeValue(type, constraint){
-	var unique	= 'val_'+gensym();
+	var unique	= 'val_'+jsworld.gensym();
 	switch (constraint){
 		case "number":	value = Math.floor(Math.random()*10) - 5; break;
 		case "positive":value = Math.floor(Math.random()*10);  break;
@@ -249,10 +249,10 @@ function makeValue(type, constraint){
 	if(type == "image"){
 		var vals = new Array('images/cat.png', 'images/dog.png', 'images/lambda.png', 'images/sundae.png');
 		value = vals[Math.floor(Math.random()*vals.length)];
-		var node = img({src: value, mousedown: function(world){return false;}});
+		var node = jsworld.img({src: value, mousedown: function(world){return false;}});
 		return node;
 	}
-	return textarea({ value: value, className: type, id: unique, cols: 6});
+	return jsworld.textarea({ value: value, className: type, id: unique, cols: 6});
 }
 
 // makeEvaluator: String -> (World -> World)
@@ -291,8 +291,8 @@ function getFunctionInfo(op_name){
 // compute_event: World -> World
 function compute_event(world) {
 	var compute_exp	= function (exp){var v = evaluateExp(world, exp); alert(v); return {exp: 'value', id: exp.id, value: v, type: "image"}};
-	var values		= map(world.expressions, compute_exp);
-	return augment(world,  {expressions:	values});
+	var values		= jsworld.map(world.expressions, compute_exp);
+	return jsworld.augment(world,  {expressions:	values});
 }
 
 // evaluate depeding on expression type
@@ -306,7 +306,7 @@ function evaluateExp(world, exp){
 			var regExp_Variable	= /^(?![0-9])\w+$/;
 			if(typeof exp.value == 'string' && exp.value.search(regExp_Variable) == 0) return lookup(world.bindings(exp.value));
 			else return exp.value;			
-		case 'define':	return augment(world,  {bindings: cons(world.bindings, [exp.id, evaluateExp(exp.value)])});
+		case 'define':	return jsworld.augment(world,  {bindings: jsworld.cons(world.bindings, [exp.id, evaluateExp(exp.value)])});
 		case 'apply':
 			var inputs = exp.inputs;
 			switch(exp.fn){
@@ -391,7 +391,7 @@ function evaluateExp(world, exp){
 				default: 
 					var fn = evaluateExp(exp.fn);
 					// create a closure, bind all the arg values to the variables, and evaluate the body
-					var new_world =  augment(world,  {bindings: append(world.bindings, array_join(fn.input_names, inputs))});
+					var new_world =  jsworld.augment(world,  {bindings: jsworld.append(world.bindings, jsworld.array_join(fn.input_names, inputs))});
 					var result = evaluateExp(new_world, fn.body);
 					return result;
 			}			
@@ -420,20 +420,20 @@ function typecheck(world){
 	var typecheckExp = function(exp){
 		if(exp.exp == undefined) return typecheckValue(exp);
 		switch(exp.exp){
-			case 'define':	return augment(exp, {value: typecheckExp(exp.value)});
-			case 'function':return augment(exp, {inputs: map(exp.inputs, typecheckExp), body: typecheckExp(exp.body)});
+			case 'define':	return jsworld.augment(exp, {value: typecheckExp(exp.value)});
+			case 'function':return jsworld.augment(exp, {inputs: jsworld.map(exp.inputs, typecheckExp), body: typecheckExp(exp.body)});
 			case 'apply':
 				var functionInfo= getFunctionInfo(exp.fn);
-				var children	= map(exp.inputs, typecheckExp);
-				var childTypes	= map(children, function (c){return (c.exp == undefined)? c.className : c.type});
-				var mergedTypes	= array_join(childTypes, functionInfo.inputs);
-				var correctTypes= fold(mergedTypes, true, function(types, acc){return (types[0]==types[1]) && acc});
-				return augment(exp, {type: (correctTypes? functionInfo.output : "error"), inputs: children});
+				var children	= jsworld.map(exp.inputs, typecheckExp);
+				var childTypes	= jsworld.map(children, function (c){return (c.exp == undefined)? c.className : c.type});
+				var mergedTypes	= jsworld.array_join(childTypes, functionInfo.inputs);
+				var correctTypes= jsworld.fold(mergedTypes, true, function(types, acc){return (types[0]==types[1]) && acc});
+				return jsworld.augment(exp, {type: (correctTypes? functionInfo.output : "error"), inputs: children});
 			default: alert('ERROR - invalid expression type! exp.exp: '+exp.exp + ', exp: '+exp);
 		}
 	}
 
-	return augment(world, {expressions: map(world.expressions, typecheckExp)});
+	return jsworld.augment(world, {expressions: jsworld.map(world.expressions, typecheckExp)});
 }
 
 // exp2tree: exp -> tree
@@ -444,16 +444,16 @@ function tree2sexp(exp){
 //		case 'define':	break;
 		case 'value': 	return exp; break;
 		case 'apply':
-			var root	= div({ className: "Expression "+exp.type, id: exp.id });
+			var root	= jsworld.div({ className: "Expression "+exp.type, id: exp.id });
 			var removeFromWorld	= function (world){
-									return augment(world, { expressions: removef(world.expressions, function(e){return e.id == exp.id}),
+									return jsworld.augment(world, { expressions: removef(world.expressions, function(e){return e.id == exp.id}),
 															styles:		removef(world.styles, function(s){return s[0] == exp.id})
 												   });
 									}
-			var operator	= div({ className: "operator", dblclick: removeFromWorld, mousedown: start_drag(root) });
-			var op_text	= text(exp.fn);
-			var boxes	= map(exp.inputs, function(input){return tree2sexp(input)});
-			tree_node	= append([root, [operator, [op_text]]], boxes);
+			var operator	= jsworld.div({ className: "operator", dblclick: removeFromWorld, mousedown: start_drag(root) });
+			var op_text	= jsworld.text(exp.fn);
+			var boxes	= jsworld.map(exp.inputs, function(input){return tree2sexp(input)});
+			tree_node	= jsworld.append([root, [operator, [op_text]]], boxes);
 			return tree_node;
 			break;
 		default: alert( 'ERROR - invalid expression type! exp.exp: '+exp.exp + ', exp: '+exp);
