@@ -23,7 +23,9 @@ plt.Jsworld = {};
     // WORLD STUFFS
     //
 
-    var world;
+    function InitialWorld() {}
+
+    var world = new InitialWorld();
     var worldListeners = [];
     var runningBigBangs = [];
 
@@ -42,7 +44,8 @@ plt.Jsworld = {};
 	}
     }
 
-    function clear_world_listeners() {
+    function clear_running_state() {
+	world = new InitialWorld();
 	worldListeners = [];
     }
 
@@ -51,9 +54,17 @@ plt.Jsworld = {};
     // change_world: (world -> world) -> void
     // Adjust the world, and notify all listeners.
     function change_world(updater) {
-	world = updater(world);
-	for(var i = 0; i < worldListeners.length; i++) {
-	    worldListeners[i](world);
+	var originalWorld = world;
+	try {
+	    world = updater(world);
+	} catch(e) {
+//	    console.log(e);
+	    return;
+	}
+	if (originalWorld != world) {
+	    for(var i = 0; i < worldListeners.length; i++) {
+		worldListeners[i](world, originalWorld);
+	    }
 	}
     }
     Jsworld.change_world = change_world;
@@ -77,9 +88,13 @@ plt.Jsworld = {};
 	top  += e.offsetTop  + (e.currentStyle?(parseInt(e.currentStyle.borderTopWidth)).NaN0():0);
 	return {x:left, y:top};	
     }
+    Jsworld.getPosition = getPosition;
+
 
     var gensym_counter = 0;
     function gensym(){ return gensym_counter++;}
+    Jsworld.gensym = gensym;
+
 
     function map(a, f) {
 	var b = new Array(a.length);
@@ -303,8 +318,9 @@ plt.Jsworld = {};
 	    if (relations[i].relation == 'parent') {
 		var parent = relations[i].parent, child = relations[i].child;
 			
-		if (child.parentNode !== parent)
+		if (child.parentNode !== parent) {
 		    parent.appendChild(child);
+		}
 	    }
 	
 	// arrange siblings in proper order
@@ -428,11 +444,33 @@ plt.Jsworld = {};
     }
 
 
-    function do_redraw(world, toplevelNode, redraw_func, redraw_css_func) {
-	var t = sexp2tree(redraw_func(world));
-	var ns = nodes(t);
-	update_dom(toplevelNode, ns, relations(t));
-	update_css(ns, sexp2css(redraw_css_func(world)));
+    function do_redraw(world, oldWorld, toplevelNode, redraw_func, redraw_css_func) {
+	if (oldWorld instanceof InitialWorld) {
+	    // Simple path
+	    var t = sexp2tree(redraw_func(world));
+	    var ns = nodes(t);
+	    update_dom(toplevelNode, ns, relations(t));
+	    update_css(ns, sexp2css(redraw_css_func(world)));
+	    return;
+	} else {
+	    // We try to avoid updating the dom if the value
+	    // hasn't changed.
+ 	    var oldRedraw = redraw_func(oldWorld);
+ 	    var newRedraw = redraw_func(world);	    
+ 	    var oldRedrawCss = redraw_css_func(oldWorld);
+	    var newRedrawCss = redraw_css_func(world);
+	    var t = sexp2tree(newRedraw);
+ 	    var ns = nodes(t);
+
+ 	    if(oldRedraw != newRedraw) {
+ 		update_dom(toplevelNode, ns, relations(t));
+ 		update_css(ns, sexp2css(newRedrawCss));
+ 	    } else {
+		if(oldRedrawCss != newRedrawCss) {
+ 		    update_css(ns, sexp2css(newRedrawCss));
+		}
+ 	    }
+	}
     }
 
 
@@ -465,7 +503,7 @@ plt.Jsworld = {};
     // Notes: big_bang maintains a stack of activation records; it should be possible
     // to call big_bang re-entrantly.
     function big_bang(top, init_world, handlerCreators, attribs) {
-	clear_world_listeners();
+	clear_running_state();
 
 	// Construct a fresh set of the handlers.
 	var handlers = map(handlerCreators, function(x) { return x();} );
@@ -477,7 +515,7 @@ plt.Jsworld = {};
 	var activationRecord = 
 	    new BigBangRecord(top, init_world, handlerCreators, handlers, attribs);
 	runningBigBangs.push(activationRecord);
-	function keepRecordUpToDate(w) {
+	function keepRecordUpToDate(w, oldW) {
 	    activationRecord.world = w;
 	}
 	add_world_listener(keepRecordUpToDate);
@@ -494,7 +532,7 @@ plt.Jsworld = {};
 		handlers[i].onRegister(top);
 	    }
 	}
-	function watchForTermination(w) {
+	function watchForTermination(w, oldW) {
 	    if (stopWhen.test(w)) {
 		stopWhen.receiver(world);		    
 		var currentRecord = runningBigBangs.pop();
@@ -515,6 +553,7 @@ plt.Jsworld = {};
 
     }
     Jsworld.big_bang = big_bang;
+
 
 
 
@@ -545,8 +584,8 @@ plt.Jsworld = {};
 	return function() {
 	    var drawer = {
 		_top: null,
-		_listener: function(w) { 
-		    do_redraw(w, drawer._top, redraw, redraw_css); 
+		_listener: function(w, oldW) { 
+		    do_redraw(w, oldW, drawer._top, redraw, redraw_css); 
 		},
 		onRegister: function (top) { 
 		    drawer._top = top;
@@ -702,6 +741,12 @@ plt.Jsworld = {};
 	return copy_attribs(document.createElement('canvas'), attribs);	
     }
     Jsworld.canvas = canvas;
+
+
+    function img(attribs) {
+	return copy_attribs(document.createElement('img'), attribs);
+    }
+    Jsworld.img = img;
 
 
 })();
