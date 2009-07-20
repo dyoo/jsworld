@@ -708,6 +708,20 @@ plt.Jsworld = {};
     }
     Jsworld.input = input;
 
+
+    // worldToValF: world -> string
+    // updateF: world string -> world
+    function bidirectional_text_input(worldToValF, updateF, attribs) {
+	var n = document.createElement('input');
+	n.type = "text";
+	var lastValue = undefined;
+	function monitor(w, e) {
+	    return updateF(w, n.value);
+	}
+	add_ev(n, 'keypress', monitor);
+    }
+    
+
     function text(s, attribs) {
 	return copy_attribs(document.createTextNode(s), attribs);
     }
