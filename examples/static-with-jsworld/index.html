@@ -3,9 +3,7 @@
 <script src="../../jsworld.js"></script>
 
 
-
 <script lang="javascript">
-
 
 function init() {
   var Jsworld = plt.Jsworld;
@@ -16,22 +14,20 @@ function init() {
   }
 
   function draw_css(w) {
-     return [["para" , ["font-size", w + "px"]]];
-
+     return [["para" , ["color", "rgb(" + Math.floor(Math.abs(Math.sin(w)* 256)) +
+                                      ", 0, 0)"]]];
   }
 
   function update(w) {
-      return w + 1;
+      return w + 0.1;
   }
 
-  var initial_world = 10;
+  var initial_world = 0;
 
   Jsworld.big_bang(document.body, 
                    initial_world,
-                   [
-                    Jsworld.on_draw(draw, draw_css),
-                    Jsworld.on_tick(1000, update)
-                   ]);
+                   [Jsworld.on_draw(draw, draw_css),
+                    Jsworld.on_tick(100, update)]);
 }
 
 </script>
