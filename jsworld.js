@@ -763,6 +763,18 @@ plt.Jsworld = {};
     }
     Jsworld.button = button;
 
+
+    function bidirectional_input(type, toVal, updateVal, attribs) {
+	var n = document.createElement('input');
+	n.type = type;
+	// FIXME: must hook into add_ev.
+	// FIXME: toVal must fire off to change the value attribute
+	// whenever the world changes.
+	return copy_attribs(n, attribs);
+    }
+    Jsworld.bidirectional_input = bidirectional_input;
+    
+
     function input(type, attribs) {
 	var n = document.createElement('input');
 	n.type = type;
