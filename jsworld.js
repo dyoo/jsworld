@@ -64,7 +64,11 @@ plt.Jsworld = {};
 	}
 	if (originalWorld != world) {
 	    for(var i = 0; i < worldListeners.length; i++) {
-		worldListeners[i](world, originalWorld);
+		try {
+		    worldListeners[i](world, originalWorld);
+		} catch (e) {
+		    alert(e);
+		}
 	    }
 	}
     }
@@ -326,6 +330,7 @@ plt.Jsworld = {};
 	return ret;
     }
 
+
     // update_dom(nodes(Node), relations(Node)) = void
     function update_dom(toplevelNode, nodes, relations) {
 
@@ -435,6 +440,8 @@ plt.Jsworld = {};
 		else { node = next; break; }
 	    }
 	}
+	
+	refresh_node_values(nodes);
     }
 
     function set_css_attribs(node, attribs) {
@@ -460,6 +467,18 @@ plt.Jsworld = {};
 	    }
 	    else set_css_attribs(css[i].node, css[i].attribs);
     }
+
+
+
+    // If any node cares about the world, send it in.
+    function refresh_node_values(nodes) {
+	for (var i = 0; i < nodes.length; i++) {
+	    if (nodes[i].onWorldChange) {
+		nodes[i].onWorldChange(world);
+	    }
+	}
+    }
+
 
 
     function do_redraw(world, oldWorld, toplevelNode, redraw_func, redraw_css_func) {
@@ -729,6 +748,13 @@ plt.Jsworld = {};
     }
 
 
+    function addWorldListeningForValue(node, f) {
+	node.onWorldChange = function(w) {node.value = f(w)};
+	return node;
+    }
+
+
+
 
     //
     // WORLD STUFFS
@@ -849,7 +875,8 @@ plt.Jsworld = {};
 	// FIXME: must hook into add_ev.
 	// FIXME: toVal must fire off to change the value attribute
 	// whenever the world changes.
-	return addFocusTracking(copy_attribs(n, attribs));
+	return addWorldListeningForValue(addFocusTracking(copy_attribs(n, attribs)),
+					 toVal);
     }
     Jsworld.bidirectional_input = bidirectional_input;
     
