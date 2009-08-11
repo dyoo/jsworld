@@ -748,11 +748,6 @@ plt.Jsworld = {};
     }
 
 
-    function addWorldListeningForValue(node, f) {
-	node.onWorldChange = function(w) {node.value = f(w)};
-	return node;
-    }
-
 
 
 
@@ -847,6 +842,11 @@ plt.Jsworld = {};
 	return node;
     }
 
+
+    //
+    // NODE TYPES
+    //
+
     function p(attribs) {
 	return addFocusTracking(copy_attribs(document.createElement('p'), attribs));
     }
@@ -871,12 +871,11 @@ plt.Jsworld = {};
 	function onKey(w, e) {
 	    return updateVal(w, n.value);
 	}
+	// This established the widget->world direction
 	add_ev_after(n, 'keypress', onKey);
-	// FIXME: must hook into add_ev.
-	// FIXME: toVal must fire off to change the value attribute
-	// whenever the world changes.
-	return addWorldListeningForValue(addFocusTracking(copy_attribs(n, attribs)),
-					 toVal);
+	// and this establishes the world->widget.
+	n.onWorldChange = function(w) {n.value = toVal(w)};
+	return addFocusTracking(copy_attribs(n, attribs));
     }
     Jsworld.bidirectional_input = bidirectional_input;
     
@@ -923,8 +922,10 @@ plt.Jsworld = {};
     Jsworld.canvas = canvas;
 
 
-    function img(attribs) {
-	return addFocusTracking(copy_attribs(document.createElement('img'), attribs));
+    function img(src, attribs) {
+	var n = document.createElement('img');
+	n.src = src;
+	return addFocusTracking(copy_attribs(n, attribs));
     }
     Jsworld.img = img;
 
