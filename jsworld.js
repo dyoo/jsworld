@@ -17,6 +17,10 @@ plt.Jsworld = {};
     var Jsworld = plt.Jsworld;
 
 
+    var currentFocusedNode = false;
+
+
+
     //
     // WORLD STUFFS
     //
@@ -324,6 +328,7 @@ plt.Jsworld = {};
 
     // update_dom(nodes(Node), relations(Node)) = void
     function update_dom(toplevelNode, nodes, relations) {
+
 	// TODO: rewrite this to move stuff all in one go... possible? necessary?
 	
 	// move all children to their proper parents
@@ -466,6 +471,8 @@ plt.Jsworld = {};
 	    update_css(ns, sexp2css(redraw_css_func(world)));
 	    return;
 	} else {
+	    var currentFocusedSelection = getCurrentFocusedSelection();
+
 	    // We try to avoid updating the dom if the value
 	    // hasn't changed.
  	    var oldRedraw = redraw_func(oldWorld);
@@ -475,6 +482,9 @@ plt.Jsworld = {};
 	    var t = sexp2tree(newRedraw);
  	    var ns = nodes(t);
 
+	    // Try to save the current selection and preserve it across
+	    // dom updates.
+
  	    if(oldRedraw != newRedraw) {
  		update_dom(toplevelNode, ns, relations(t));
  		update_css(ns, sexp2css(newRedrawCss));
@@ -483,7 +493,37 @@ plt.Jsworld = {};
  		    update_css(ns, sexp2css(newRedrawCss));
 		}
  	    }
+	    currentFocusedSelection.restore();
 	}
+    }
+
+
+    function FocusedSelection() {
+	this.focused = currentFocusedNode;
+	this.selectionStart = currentFocusedNode.selectionStart;
+	this.selectionEnd = currentFocusedNode.selectionEnd;
+    }
+
+    // Try to restore the focus.
+    FocusedSelection.prototype.restore = function() {
+	// FIXME: if we're scrolling through, what's visible
+	// isn't restored yet.
+	if (this.focused.parentNode) {
+	    this.focused.selectionStart = this.selectionStart;
+	    this.focused.selectionEnd = this.selectionEnd;
+	    this.focused.focus();
+	} else if (this.focused.id) {
+	    var matching = document.getElementById(this.focused.id);
+	    if (matching) {
+		matching.selectionStart = this.selectionStart;
+		matching.selectionEnd = this.selectionEnd;
+		matching.focus();
+	    }
+	}
+    };
+
+    function getCurrentFocusedSelection() {
+	return new FocusedSelection();
     }
 
 
@@ -644,7 +684,8 @@ plt.Jsworld = {};
     // DOM CREATION STUFFS
     //
 
-    // apparently add_event is taken...
+    // add_ev: node string (world event -> world) -> void
+    // Attaches a world-updating handler when the world is changed.
     function add_ev(node, event, f) {
 	node.addEventListener(event, 
 			      function (e) { 
@@ -653,6 +694,40 @@ plt.Jsworld = {};
 				      }) }, 
 			      false);
     }
+
+    // add_ev_after: node string (world event -> world) -> void
+    // Attaches a world-updating handler when the world is changed, but only
+    // after the fired event has finished.
+    function add_ev_after(node, event, f) {
+	node.addEventListener(event, 
+			      function (e) {
+				  setTimeout(
+				      function() {
+					  change_world(function(w) { 
+					      return f(w, e);
+					  });
+
+				      }, 0);
+			      },
+			      false);
+    }
+
+
+    function addFocusTracking(node) {
+	node.addEventListener("focus",
+			      function(e) {
+				  currentFocusedNode = node;
+			      },
+			      false);
+
+	node.addEventListener("blur",
+			      function(e) {
+				  currentFocusedNode = undefined;
+			      },
+			      false);
+	return node;
+    }
+
 
 
     //
@@ -747,19 +822,19 @@ plt.Jsworld = {};
     }
 
     function p(attribs) {
-	return copy_attribs(document.createElement('p'), attribs);
+	return addFocusTracking(copy_attribs(document.createElement('p'), attribs));
     }
     Jsworld.p = p;
 
     function div(attribs) {
-	return copy_attribs(document.createElement('div'), attribs);
+	return addFocusTracking(copy_attribs(document.createElement('div'), attribs));
     }
     Jsworld.div = div;
 
     function button(f, attribs) {
 	var n = document.createElement('button');
 	add_ev(n, 'click', f);
-	return copy_attribs(n, attribs);
+	return addFocusTracking(copy_attribs(n, attribs));
     }
     Jsworld.button = button;
 
@@ -767,10 +842,14 @@ plt.Jsworld = {};
     function bidirectional_input(type, toVal, updateVal, attribs) {
 	var n = document.createElement('input');
 	n.type = type;
+	function onKey(w, e) {
+	    return updateVal(w, n.value);
+	}
+	add_ev_after(n, 'keypress', onKey);
 	// FIXME: must hook into add_ev.
 	// FIXME: toVal must fire off to change the value attribute
 	// whenever the world changes.
-	return copy_attribs(n, attribs);
+	return addFocusTracking(copy_attribs(n, attribs));
     }
     Jsworld.bidirectional_input = bidirectional_input;
     
@@ -778,12 +857,12 @@ plt.Jsworld = {};
     function input(type, attribs) {
 	var n = document.createElement('input');
 	n.type = type;
-	return copy_attribs(n, attribs);
+	return addFocusTracking(copy_attribs(n, attribs));
     }
     Jsworld.input = input;
 
     function text(s, attribs) {
-	return copy_attribs(document.createTextNode(s), attribs);
+	return addFocusTracking(copy_attribs(document.createTextNode(s), attribs));
     }
     Jsworld.text = text;
 
@@ -792,33 +871,33 @@ plt.Jsworld = {};
 	for(var i = 0; i < opts.length; i++)
 	    n.appendChild(option({value: opts[i]}));
 	add_ev(n, 'change', f);
-	return copy_attribs(n, attribs);
+	return addFocusTracking(copy_attribs(n, attribs));
     }
     Jsworld.select = select;
 
     function option(attribs){
-	return copy_attribs(document.createElement('option'), attribs);
+	return addFocusTracking(copy_attribs(document.createElement('option'), attribs));
     }
     Jsworld.option = option;
 
     function textarea(attribs){
-	return copy_attribs(document.createElement('textarea'), attribs);
+	return addFocusTracking(copy_attribs(document.createElement('textarea'), attribs));
     }
     Jsworld.textarea = textarea;
 
     function h1(attribs){
-	return copy_attribs(document.createElement('h1'), attribs);
+	return addFocusTracking(copy_attribs(document.createElement('h1'), attribs));
     }
     Jsworld.h1 = h1;
 
     function canvas(attribs){
-	return copy_attribs(document.createElement('canvas'), attribs);	
+	return addFocusTracking(copy_attribs(document.createElement('canvas'), attribs));	
     }
     Jsworld.canvas = canvas;
 
 
     function img(attribs) {
-	return copy_attribs(document.createElement('img'), attribs);
+	return addFocusTracking(copy_attribs(document.createElement('img'), attribs));
     }
     Jsworld.img = img;
 
