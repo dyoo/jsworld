@@ -9,7 +9,38 @@ Reactive World-style programming in Javascript.
 
 Example
 ========
-[Fill me in]
+
+Here's a simple program that displays a clickable button.  When the
+run() function is called, a button and a red number will be written to
+the document; clicking the button will cause the displayed number to
+be incremented.  (examples/simple-button.html)
+
+      var jsworld = plt.Jsworld;
+
+      var init_world = 0;
+
+      // press: world -> world
+      function press(w) {
+          return w + 1;
+      }
+
+      function draw(w) {
+          return [document.body,
+                  [jsworld.p({id: "myPara"}), [jsworld.text(w)]],
+                  [jsworld.button(press),
+                   [jsworld.text("Press me to increment " + w)]]];
+      }
+      
+      function draw_css(world) {
+        return [["myPara", ["color", "red"],
+                           ["font-size", "50px"]]];
+      }
+
+      function run() {
+          jsworld.big_bang(window.document.body, 
+                           init_world, 
+		           [jsworld.on_draw(draw, draw_css)]);
+      }
 
 
 
@@ -17,13 +48,35 @@ Example
 Types
 =====
 
-sexp: (cons node (listof sexp))
-css-style: (node (listof (list string string)))
+The main functions passed to an on_draw expect the following types:
 
 
+dom-sexp: [node, dom-sexp...]
+
+css-sexp: [[string-or-node [string string]...]...]
+          
 
 
+The node-producing functions are described later in this document.
+Examples of nodes are:
 
+    var n1 = plt.jsworld.div();
+    var n2 = plt.jsworld.p();
+    var n3 = plt.jsworld.text("I am a text");
+
+Examples of dom-exps are:
+
+    var dom1 = [n1];
+    var dom2 = [n1, [n2, [n3]]]
+    var dom3 = [n1, [n2, [n3],
+                         [n3]]]
+
+
+Examples of css-sexps are
+
+    var emptyStyle = [];
+    var style1 = [["someNodeId", ["width", "30px"],
+                                 ["height", "30px"]]];
 
 
 big-bang
@@ -36,12 +89,13 @@ temporarily pauses that computation and begins a new nested one.
 
 
 
+
 Helpers
 =======
 
-plt.Jsworld.node_to_tree: node -> (sexpof dom)
+plt.Jsworld.node_to_tree: node -> dom-sexp
 
-Given a node, produces an (sexpof dom) of that node.  Useful when you
+Given a node, produces an dom-sexp of that node.  Useful when you
 want to use the existing dom tree in a static HTML file in a big-bang.
 See examples/static-with-jsworld for an example of this.
 
@@ -51,7 +105,7 @@ See examples/static-with-jsworld for an example of this.
 
 Handler functions
 ==================
-plt.Jsworld.on_draw: (world -> (sexpof dom)) (world -> (sexpof css-style)) -> handler
+plt.Jsworld.on_draw: (world -> dom-sexp) (world -> (sexpof css-style)) -> handler
 
 Called whenever the world changes; the first argument produces a new
 dom, and the second produces the new styles applied to that dom.
@@ -97,14 +151,12 @@ completes and the final world value is sent to the second function.
 Node types
 ==========
 
-
-
 ----------------------------------------------------------------------
 
 
 plt.Jsworld.p: assoc -> node
 
-Creates a P element.
+Creates a P paragraph element.
 
 
 ----------------------------------------------------------------------
