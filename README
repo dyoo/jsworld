@@ -144,6 +144,15 @@ Registers a stop-when handler that consumes a world judger.  If the
 judge says that th world is stopped, then the reactive computation
 completes and the final world value is sent to the second function.
 
+
+----------------------------------------------------------------------
+
+plt.on_world_change: (world -> void) -> handler
+
+Registers an on-world-chnage handler that listens whenever the world
+changes.  The listener must not have an effect on the world.
+
+
 ----------------------------------------------------------------------
 
 
