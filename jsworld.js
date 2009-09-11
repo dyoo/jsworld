@@ -33,6 +33,16 @@ plt.Jsworld = {};
 
 
 
+    // Close all world computations.
+    Jsworld.shutdown = function() {
+	while(true) {
+	    var currentRecord = runningBigBangs.pop();
+	    if (currentRecord) { currentRecord.pause(); }
+	}
+	clear_running_state();
+    }
+
+
 
     function add_world_listener(listener) {
 	worldListeners.push(listener);
@@ -639,8 +649,8 @@ plt.Jsworld = {};
 	    if (stopWhen.test(w)) {
 		stopWhen.receiver(world);		    
 		var currentRecord = runningBigBangs.pop();
-		currentRecord.pause();
-		if(runningBigBangs.length > 0) {
+		if (currentRecord) { currentRecord.pause(); }
+		if (runningBigBangs.length > 0) {
 		    var restartingBigBang = runningBigBangs.pop();
 		    restartingBigBang.restart();
 		}
