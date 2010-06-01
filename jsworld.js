@@ -1,11 +1,8 @@
-
 if(typeof(plt) == 'undefined') {   
     var plt = {};
 }
 
 plt.Jsworld = {};
-
-
 
 
 // Stuff here is copy-and-pasted from Chris's JSWorld.  We
@@ -70,17 +67,20 @@ plt.Jsworld = {};
 	try {
 	    world = updater(world);
 	} catch(e) {
-	    return;
+	    world = originalWorld;
+	    throw e;
 	}
-	if (originalWorld != world) {
-	    for(var i = 0; i < worldListeners.length; i++) {
-		try {
-		    worldListeners[i](world, originalWorld);
-		} catch (e) {
-		    // Revert the world state
-		    world = originalWorld;
-		    throw e;
-		}
+
+	// Originally, we'd optimize away the update if the world
+	// hasn't changed, but with mutation, we no longer can
+	// make that optimization.
+	for(var i = 0; i < worldListeners.length; i++) {
+	    try {
+		worldListeners[i](world, originalWorld);
+	    } catch (e) {
+		// Revert the world state
+		world = originalWorld;
+		throw e;
 	    }
 	}
     }
@@ -327,6 +327,10 @@ plt.Jsworld = {};
     function nodes(tree) {
 	var ret = [tree.node];
 	
+	if (tree.node.jsworldOpaque == true) {
+	    return ret;
+	}
+
 	for (var i = 0; i < tree.children.length; i++)
 	    ret = ret.concat(nodes(tree.children[i]));
 	
@@ -349,6 +353,8 @@ plt.Jsworld = {};
     function relations(tree) {
 	var ret = [];
 	
+	if (tree.node.jsworldOpaque == true) { return []; }
+
 	for (var i = 0; i < tree.children.length; i++)
 	    ret.push({ relation: 'parent', parent: tree.node, child: tree.children[i].node });
 	
@@ -364,11 +370,6 @@ plt.Jsworld = {};
 
     function appendChild(parent, child) {
 	parent.appendChild(child);
-	// HACK!  If this node is aware of afterAttach, fire off that
-	// event handler.
-	if (child.afterAttach) {
-	    child.afterAttach();
-	}
     }
 
 
@@ -406,6 +407,7 @@ plt.Jsworld = {};
 		
 	    if (!unsorted) break;
 	}
+
 	
 	// remove dead nodes
 	var live_nodes;
@@ -441,13 +443,13 @@ plt.Jsworld = {};
 	    for (;;) {
 		// process first
 		// move down
-		if (node.firstChild == null) break;
+		if (node.firstChild == null || node.jsworldOpaque == true) break;
 		node = node.firstChild;
 	    }
 		
 	    while (node != stop) {
 		var next = node.nextSibling, parent = node.parentNode;
-			
+		
 		// process last
 		var found = false;
 		var foundNode = undefined;
@@ -472,22 +474,26 @@ plt.Jsworld = {};
 			}
 			
 		if (!found) {
-		    // reparent children, remove node
-		    while (node.firstChild != null)
-			appendChild(node.parentNode, node.firstChild);
+		    if (node.isJsworldOpaque) {
+		    } else {
+			// reparent children, remove node
+			while (node.firstChild != null) {
+			    appendChild(node.parentNode, node.firstChild);
+			}
+		    }
 				
 		    next = node.nextSibling; // HACKY
-				
 		    node.parentNode.removeChild(node);
 		} else {
 		    mergeNodeValues(node, foundNode);
 		}
-			
+
 		// move sideways
 		if (next == null) node = parent;
 		else { node = next; break; }
 	    }
 	}
+
 	
 	refresh_node_values(nodes);
     }
@@ -499,11 +505,17 @@ plt.Jsworld = {};
     }
 
 
+
+    // camelCase: string -> string
+    function camelCase(name) {
+	return name.replace(/\-(.)/g, function(m, l){return l.toUpperCase()});
+    }
+
+
     function set_css_attribs(node, attribs) {
 	for (var j = 0; j < attribs.length; j++){
-	    node.style.setProperty(attribs[j].attrib, attribs[j].values.join(" "), "");
+	    node.style[camelCase(attribs[j].attrib)] = attribs[j].values.join(" ");
 	}
-		
     }
 
 
@@ -522,9 +534,9 @@ plt.Jsworld = {};
 
     function update_css(nodes, css) {
 	// clear CSS
-	for (var i = 0; i < nodes.length; i++)
-	    if ('style' in nodes[i])
-		nodes[i].style.cssText = "";
+	for (var i = 0; i < nodes.length; i++) {
+	    clearCss(nodes[i]);
+	}
 	
 	// set CSS
 	for (var i = 0; i < css.length; i++)
@@ -535,6 +547,12 @@ plt.Jsworld = {};
 		    }
 	    }
 	    else set_css_attribs(css[i].node, css[i].attribs);
+    }
+
+
+    var clearCss = function(node) {
+	if ('style' in node)
+	    node.style.cssText = "";
     }
 
 
@@ -555,8 +573,9 @@ plt.Jsworld = {};
 	    // Simple path
 	    var t = sexp2tree(redraw_func(world));
 	    var ns = nodes(t);
-	    update_dom(toplevelNode, ns, relations(t));
+	    // HACK: css before dom, due to excanvas hack.
 	    update_css(ns, sexp2css(redraw_css_func(world)));
+	    update_dom(toplevelNode, ns, relations(t));
 	    return;
 	} else {
 	    maintainingSelection(
@@ -574,8 +593,12 @@ plt.Jsworld = {};
 		    // dom updates.
 
  		    if(oldRedraw !== newRedraw) {
- 			update_dom(toplevelNode, ns, relations(t));
+			// Kludge: update the CSS styles first.
+			// This is a workaround an issue with excanvas: any style change
+			// clears the content of the canvas, so we do this first before
+			// attaching the dom element.
  			update_css(ns, sexp2css(newRedrawCss));
+ 			update_dom(toplevelNode, ns, relations(t));
  		    } else {
 			if(oldRedrawCss !== newRedrawCss) {
  			    update_css(ns, sexp2css(newRedrawCss));
@@ -743,7 +766,7 @@ plt.Jsworld = {};
     function on_draw(redraw, redraw_css) {
 	function wrappedRedraw(w) {
 	    var newDomTree = redraw(w);
-	    checkDomSexp(newDomTree);
+	    checkDomSexp(newDomTree, newDomTree);
 	    return newDomTree;
 	}
 
@@ -810,7 +833,7 @@ plt.Jsworld = {};
 	    node.addEventListener(eventName, fn, false);
 	} else {
 	    // IE
-	    node.attachevent('on' + event, fn, false);
+	    node.attachEvent('on' + eventName, fn, false);
 	}
     }
 
@@ -897,32 +920,42 @@ plt.Jsworld = {};
     }
 
 
-    // checkDomSexp: X -> boolean
+    var throwDomError = function(thing, topThing) {
+	throw new JsworldDomError(
+	    plt.Kernel.format(
+		"Expected a non-empty array, received ~s within ~s",
+		[thing, topThing]),
+	    thing);
+    };
+
+    // checkDomSexp: X X -> boolean
     // Checks to see if thing is a DOM-sexp.  If not,
     // throws an object that explains why not.
-    function checkDomSexp(thing) {
+    function checkDomSexp(thing, topThing) {
 	if (! thing instanceof Array) {
-	    throw new JsworldDomError("Expected a non-empty array",
-				      thing);
+	    throwDomError(thing, topThing);
 	}
 	if (thing.length == 0) {
-	    throw new JsworldDomError("Expected a non-empty array",
-				      thing);
+	    throwDomError(thing, topThing);
 	}
 
 	// Check that the first element is a Text or an element.
 	if (isTextNode(thing[0])) {
 	    if (thing.length > 1) {
-		throw new JsworldDomError("Text nodes can not have children",
+		throw new JsworldDomError(plt.Kernel.format("Text node ~s can not have children",
+							    [thing]),
 					  thing);
 	    }
 	} else if (isElementNode(thing[0])) {
 	    for (var i = 1; i < thing.length; i++) {
-		checkDomSexp(thing[i]);
+		checkDomSexp(thing[i], thing);
 	    }
 	} else {
-	    throw new JsworldDomError("expected a Text or an Element",
-				      thing[0]);
+	    throw new JsworldDomError(
+		plt.Kernel.format(
+		    "expected a Text or an Element, received ~s within ~s",
+		    [thing, topThing]),
+		thing[0]);
 	}
     }
 
@@ -931,7 +964,7 @@ plt.Jsworld = {};
 	this.elt = elt;
     }
     JsworldDomError.prototype.toString = function() {
-	return this.msg + ": " + this.elt;
+	return "on-draw: " + this.msg;
     }
 
 
@@ -945,12 +978,15 @@ plt.Jsworld = {};
 
     function copy_attribs(node, attribs) {
 	if (attribs)
-	    for (a in attribs)
-		if (typeof attribs[a] == 'function')
-		    add_ev(node, a, attribs[a]);
-		else{
-		    node[a] = attribs[a];//eval("node."+a+"='"+attribs[a]+"'");
+	    for (a in attribs) {
+		if (attribs.hasOwnProperty(a)) {
+		    if (typeof attribs[a] == 'function')
+			add_ev(node, a, attribs[a]);
+		    else{
+			node[a] = attribs[a];//eval("node."+a+"='"+attribs[a]+"'");
+		    }
 		}
+	    }
 	return node;
     }
 
@@ -977,27 +1013,120 @@ plt.Jsworld = {};
     Jsworld.button = button;
 
 
-    function bidirectional_input(type, toVal, updateVal, attribs) {
+//     function bidirectional_input(type, toVal, updateVal, attribs) {
+// 	var n = document.createElement('input');
+// 	n.type = type;
+// 	function onKey(w, e) {
+// 	    return updateVal(w, n.value);
+// 	}
+// 	// This established the widget->world direction
+// 	add_ev_after(n, 'keypress', onKey);
+// 	// and this establishes the world->widget.
+// 	n.onWorldChange = function(w) {n.value = toVal(w)};
+// 	return addFocusTracking(copy_attribs(n, attribs));
+//     }
+//     Jsworld.bidirectional_input = bidirectional_input;
+
+
+    var preventDefault = function(event) {
+	if (event.preventDefault) {
+	    event.preventDefault();
+	} else {
+	    event.returnValue = false;
+	}
+    }
+
+    var stopPropagation = function(event) {
+	if (event.stopPropagation) {
+	    event.stopPropagation();
+	} else {
+	    event.cancelBubble = true;
+	}
+    }
+
+
+    var stopClickPropagation = function(node) {
+	attachEvent(node, "click",
+		    function(e) {
+			stopPropagation(e);
+		    });
+	return node;
+    }
+    
+
+    function input(aType, updateF, attribs) {
+	aType = aType.toLowerCase();
+	var dispatchTable = { text : text_input,
+			      password: text_input,
+			      checkbox: checkbox_input
+			      //button: button_input,
+			      //radio: radio_input 
+	};
+
+	if (dispatchTable[aType]) {
+	    return (dispatchTable[aType])(aType, updateF, attribs);
+	}
+	else {
+	    throw new Error("js-input: does not currently support type " + aType);
+	}
+    }
+    Jsworld.input = input;
+
+
+    var text_input = function(type, updateF, attribs) {
 	var n = document.createElement('input');
 	n.type = type;
 	function onKey(w, e) {
-	    return updateVal(w, n.value);
+	    return updateF(w, n.value);
 	}
 	// This established the widget->world direction
 	add_ev_after(n, 'keypress', onKey);
-	// and this establishes the world->widget.
-	n.onWorldChange = function(w) {n.value = toVal(w)};
-	return addFocusTracking(copy_attribs(n, attribs));
-    }
-    Jsworld.bidirectional_input = bidirectional_input;
-    
 
-    function input(type, attribs) {
+	// Every second, do a manual polling of the object, just in case.
+	var delay = 1000;
+	var lastVal = n.value;
+	var intervalId = setInterval(function() {
+	    if (! n.parentNode) {
+		clearInterval(intervalId);
+		return;
+	    }
+	    if (lastVal != n.value) {
+		lastVal = n.value;
+		change_world(function (w) {
+		    return updateF(w, n.value)
+		});
+	    }
+	},
+		    delay);
+	return stopClickPropagation(
+	    addFocusTracking(copy_attribs(n, attribs)));
+    };
+
+
+    var checkbox_input = function(type, updateF, attribs) {
 	var n = document.createElement('input');
 	n.type = type;
+
+	var onCheck = function(w, e) {
+	    return updateF(w, (n.checked ? plt.types.Logic.TRUE : plt.types.Logic.FALSE));
+	};
+	// This established the widget->world direction
+	add_ev_after(n, 'change', onCheck);
+	
+	attachEvent(n, 'click', function(e) {
+		stopPropagation(e);
+	    });
+
+	return copy_attribs(n, attribs);
+    };
+
+
+    var button_input = function(type, updateF, attribs) {
+	var n = document.createElement('button');
+	add_ev(n, 'click', function(w) { return updateF(w, n.value)});
 	return addFocusTracking(copy_attribs(n, attribs));
-    }
-    Jsworld.input = input;
+    };
+
 
 
     // worldToValF: world -> string
@@ -1010,27 +1139,38 @@ plt.Jsworld = {};
 	    return updateF(w, n.value);
 	}
 	add_ev(n, 'keypress', monitor);
+	return stopClickPropagation(
+	    addFocusTracking(
+		copy_attribs(n, attribs)));
     }
     
 
     function text(s, attribs) {
-	return addFocusTracking(copy_attribs(document.createTextNode(s), attribs));
+	var result = document.createTextNode(s);
+	return result;
     }
     Jsworld.text = text;
 
     function select(attribs, opts, f){
 	var n = document.createElement('select');
-	for(var i = 0; i < opts.length; i++)
-	    appendChild(n, option({value: opts[i]}));
+	for(var i = 0; i < opts.length; i++) {
+	    n.add(option({value: opts[i]}), null);
+	}
+	n.jsworldOpaque = true;
 	add_ev(n, 'change', f);
-	return addFocusTracking(copy_attribs(n, attribs));
+	var result = addFocusTracking(copy_attribs(n, attribs));
+	return result;
     }
     Jsworld.select = select;
 
     function option(attribs){
-	return addFocusTracking(copy_attribs(document.createElement('option'), attribs));
+	var node = document.createElement("option");
+        node.text = attribs.value;
+	node.value = attribs.value;
+ 	return node;
     }
-    Jsworld.option = option;
+
+
 
     function textarea(attribs){
 	return addFocusTracking(copy_attribs(document.createElement('textarea'), attribs));
