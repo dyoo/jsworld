@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script type="text/javascript" src="../../jsworld.js"></script>    
+    <script type="text/javascript">
+      // The world consists of a number
+      // 
+
+      var jsworld = plt.Jsworld;
+
+      var init_world = 0;
+
+      // press: world -> world
+      var press = function(w) {
+          return jsworld.with_effect(
+             w + 1,
+             jsworld.alert_effect("Beep, something was clicked"));
+      };
+
+      var draw = function(w) {
+          return [document.body,
+                  [jsworld.p({id: "myPara"}), [jsworld.text(w)]],
+                  [jsworld.button(press),
+                   [jsworld.text("Press me to increment " + w)]]];
+      };
+      
+      var draw_css = function(world) {
+        return [["myPara", ["color", "red"],
+                           ["font-size", "50px"]]];
+      };
+
+      var run = function() {
+          jsworld.big_bang(window.document.body, 
+                           init_world, 
+		           [jsworld.on_draw(draw, draw_css)]);
+      };
+      </script>
+  </head>
+  
+  <body onload="run()">
+  </body>
+</html>

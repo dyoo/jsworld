@@ -71,6 +71,21 @@ plt.Jsworld = {};
 	    throw e;
 	}
 
+	if (world instanceof WrappedWorldWithEffects) {
+	    var effects = world.getEffects();
+	    for (var i = 0; i < effects.length; i++) {
+		try {
+		    effects[i].invokeEffect();
+		} catch (e) {
+		    // FIXME: We should somehow notify that the effect has failed.
+		    throw e;
+		}		
+	    }
+	    world = world.getWorld();
+	};
+
+	
+
 	// Originally, we'd optimize away the update if the world
 	// hasn't changed, but with mutation, we no longer can
 	// make that optimization.
@@ -1201,6 +1216,78 @@ plt.Jsworld = {};
 	return addFocusTracking(copy_attribs(node, attribs));
     }
     Jsworld.raw_node = raw_node;
+
+
+
+
+
+    //////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////
+    // Effects
+
+    // An effect is an object with an invokeEffect() method.
+    
+    var WrappedWorldWithEffects = function(w, e) {
+	if (w instanceof WrappedWorldWithEffects) {
+	    this.w = w.w;
+	    this.e = w.e.concat([e]);
+	} else {
+	    this.w = w;
+	    this.e = [e];
+	}
+    };
+
+    WrappedWorldWithEffects.prototype.getWorld = function() {
+	return this.w;
+    };
+
+    WrappedWorldWithEffects.prototype.getEffects = function() {
+	return this.e;
+    };
+
+
+    //////////////////////////////////////////////////////////////////////
+
+    Jsworld.with_effect = function(w, e) {
+	return new WrappedWorldWithEffects(w, e);
+    };
+
+
+
+
+    //////////////////////////////////////////////////////////////////////
+    // Example effect: raise an alert.
+    Jsworld.alert_effect = function(msg) {
+	return new AlertEffect(msg);
+    };
+
+    var AlertEffect = function(msg) {
+	this.msg = msg;
+    };
+
+    AlertEffect.prototype.invokeEffect = function() {
+	alert(this.msg);
+    };
+
+
+    //////////////////////////////////////////////////////////////////////
+
+
+    // Example effect: play a song, given its url
+    Jsworld.music_effect = function(musicUrl) {
+	return new MusicEffect(musicUrl);
+    };
+
+    var MusicEffect = function(musicUrl) {
+	this.musicUrl = musicUrl;
+    };
+
+    MusicEffect.prototype.invokeEffect = function() {
+	new Audio(url).play();
+    };
+
+
+
 
 
 })();
